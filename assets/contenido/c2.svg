@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560" font-family="Impact, Segoe UI, system-ui, sans-serif">
+  <rect width="1000" height="560" fill="#f2f2ee"/>
+  <!-- área de imagen del meme -->
+  <rect x="40" y="86" width="920" height="368" rx="8" fill="#cfd6dd"/>
+  <!-- cara neutra placeholder -->
+  <circle cx="500" cy="262" r="96" fill="#ffd166" stroke="#c9a227" stroke-width="4"/>
+  <circle cx="466" cy="240" r="12" fill="#3a3a3a"/>
+  <circle cx="534" cy="240" r="12" fill="#3a3a3a"/>
+  <path d="M456 296 q44 34 88 0" stroke="#3a3a3a" stroke-width="8" fill="none" stroke-linecap="round"/>
+  <!-- textos meme -->
+  <text x="500" y="60" font-size="44" font-weight="800" fill="#141414" text-anchor="middle">TEXTO SUPERIOR DE PRUEBA</text>
+  <text x="500" y="516" font-size="44" font-weight="800" fill="#141414" text-anchor="middle">TEXTO INFERIOR DE PRUEBA</text>
+  <!-- marca de agua -->
+  <text x="500" y="546" font-size="18" fill="#8a8a8a" text-anchor="middle" font-family="Segoe UI, system-ui, sans-serif">MEME SIMULADO — NO REAL</text>
+</svg>

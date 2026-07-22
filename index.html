@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Feelgorithm — prototipo</title>
+  <meta name="theme-color" content="#12101a" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <style>
+    html, body { margin: 0; height: 100%; background: #12101a; overflow: hidden; }
+    #game { width: 100vw; height: 100vh; position: relative; }
+    /* Phaser (Scale.FIT) centra y ajusta el canvas dentro de #game */
+
+    /* El canvas es 16:9 fijo; si la ventana no lo es, Scale.FIT deja franjas a los
+       lados o arriba/abajo. En vez de negro, se rellenan con el mismo fondo
+       desenfocado y oscurecido: la franja deja de leerse como un error. */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: -5vmax;                 /* margen extra para que el blur no muestre el borde */
+      background: url('assets/bg/gameBackground.png') center / cover no-repeat;
+      filter: blur(32px) brightness(0.42) saturate(0.75);
+      z-index: -1;
+      pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="game"></div>
+  <script src="vendor/phaser.min.js"></script>
+  <script type="module" src="src/main.js"></script>
+  <script>
+    // PWA: registro del service worker (offline). Requiere servir por http(s), no file://
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW:', e));
+      });
+    }
+  </script>
+</body>
+</html>

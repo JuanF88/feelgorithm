@@ -1,0 +1,10 @@
+{
+  "name": "feelgorithm",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "description": "Juego web MIL — UNESCO Youth Hackathon 2026",
+  "scripts": {
+    "start": "npx --yes serve -l 4321 ."
+  }
+}
