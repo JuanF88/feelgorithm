@@ -1,6 +1,14 @@
 # Feelgorithm — prototipo (Phaser 3 + PWA)
 
-Juego web para el UNESCO Youth Hackathon 2026. Ver `../PLAN.md` para el diseño.
+Juego web para el UNESCO Youth Hackathon 2026: enseña a reconocer la manipulación
+mediática usando tu propia emoción como detector.
+
+> Los documentos de diseño e investigación (plan, estado del arte, decisiones)
+> se mantienen fuera de este repositorio, en la carpeta del proyecto.
+
+**Todo el contenido que muestra el juego es sintético**, fabricado por el equipo:
+verosímil pero no real, sin personas ni nacionalidades identificables. Nunca se usa
+odio real descargado de internet — mostrarlo enseñaría aquello que el juego combate.
 
 ## Cómo correrlo
 
