@@ -350,7 +350,9 @@ export default class RoomScene extends Phaser.Scene {
 
   setState(s) {
     this.state = s;
-    if (s === STATE.IDLE) this.showPrompt('Camina hasta la palanca');
+    // Sin placa al empezar: el globo sobre el personaje ("Activa la palanca") ya
+    // guía cuando hace falta, y la sala se ve limpia mientras el jugador explora.
+    if (s === STATE.IDLE) this.showPrompt('');
   }
 
   onLever() {

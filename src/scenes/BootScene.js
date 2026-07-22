@@ -26,6 +26,7 @@ export default class BootScene extends Phaser.Scene {
     this.load.image(PROMPT.banner.key, PROMPT.banner.file);
     this.load.image(UI.play.key, UI.play.file);
     this.load.image(UI.settings.key, UI.settings.file);
+    this.load.image(UI.fullscreen.key, UI.fullscreen.file);
     this.load.image(CUPULA.key, CUPULA.file);
     this.load.image(TARJETA.key, TARJETA.file);
     this.load.spritesheet(CHAR.key, CHAR.sheet, {

@@ -40,26 +40,10 @@ export function buildTopBar(scene, { onSettings } = {}) {
     x -= size + gap;
   }
 
-  // Pantalla completa: no hay arte para este botón, así que se dibuja con la misma
-  // paleta (marco redondeado + esquinas tipo visor) para que no desentone.
-  const fs = scene.add.container(x, y).setDepth(120);
-  const bg = scene.add.rectangle(0, 0, size, size, 0x1b2436, 0.92)
-    .setStrokeStyle(4, COLORS.accent, 0.8);
-  const g = scene.add.graphics();
-  const r = size * 0.26;
-  const arm = size * 0.13;
-  g.lineStyle(5, 0x8ee6f0, 1);
-  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
-    g.beginPath();
-    g.moveTo(sx * r, sy * r - sy * arm);
-    g.lineTo(sx * r, sy * r);
-    g.lineTo(sx * r - sx * arm, sy * r);
-    g.strokePath();
-  });
-  fs.add([bg, g]);
-  fs.setSize(size, size).setInteractive({ useHandCursor: true });
-  fs.on('pointerover', () => bg.setFillStyle(0x2b3852, 0.95));
-  fs.on('pointerout', () => bg.setFillStyle(0x1b2436, 0.92));
+  const fs = scene.add.image(x, y, UI.fullscreen.key).setDepth(120);
+  fs.setDisplaySize(size, size).setInteractive({ useHandCursor: true });
+  fs.on('pointerover', () => fs.setDisplaySize(size * 1.08, size * 1.08));
+  fs.on('pointerout', () => fs.setDisplaySize(size, size));
   fs.on('pointerdown', () => toggleFullscreen(scene));
   made.push(fs);
 

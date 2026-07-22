@@ -97,8 +97,8 @@ export const EYES = {
   frameWidth: 900,
   frameHeight: 340,
   xf: 0.5,
-  yf: 0.50,
-  width: 900,          // ancho en pantalla
+  yf: 0.40,            // más chico = más arriba
+  width: 700,          // ancho en pantalla
   alpha: 0.30,         // discretos: son ambiente, no un elemento de juego
   depth: -95,          // justo delante del fondo (-100)
   blink: { rate: 14, minMs: 3200, maxMs: 8000 },
@@ -176,7 +176,8 @@ export const PROMPT = {
 // se usan las versiones recortadas para que el tamaño en pantalla sea el real.
 export const UI = {
   play:     { key: 'btnPlay',     file: 'assets/props/playButtonTrim.png',     width: 360 },
-  settings: { key: 'btnSettings', file: 'assets/props/settingsButtonTrim.png', size: 96 },
+  settings:   { key: 'btnSettings',   file: 'assets/props/settingsButtonTrim.png',       size: 96 },
+  fullscreen: { key: 'btnFullscreen', file: 'assets/props/completeScreenButtonTrim.png' },
   topRight: { margin: 70, gap: 18 },   // esquina superior derecha: ajustes + pantalla completa
 };
 
