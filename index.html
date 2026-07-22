@@ -40,10 +40,23 @@
   <script type="module" src="src/main.js"></script>
   <script>
     // PWA: registro del service worker (offline). Requiere servir por http(s), no file://
+    // En desarrollo (localhost) el service worker estorba: intercepta cada archivo
+    // y obliga a recargar en duro tras cada cambio. Ahí se DESREGISTRA y se limpian
+    // sus cachés; solo se instala en el sitio publicado, que es donde importa que
+    // el juego funcione sin conexión.
+    const isDev = ['localhost', '127.0.0.1', ''].includes(location.hostname);
+
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW:', e));
-      });
+      if (isDev) {
+        navigator.serviceWorker.getRegistrations()
+          .then((rs) => rs.forEach((r) => r.unregister()))
+          .catch(() => {});
+        if (window.caches) caches.keys().then((ks) => ks.forEach((k) => caches.delete(k)));
+      } else {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('service-worker.js').catch((e) => console.warn('SW:', e));
+        });
+      }
     }
   </script>
 </body>

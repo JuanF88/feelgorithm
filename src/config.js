@@ -44,7 +44,7 @@ export const CHAR = {
   originX: 0.5,         // la hoja ya viene centrada: voltear izq/der no da "salto"
   displayScale: 1.25,   // ~250 px de alto en pantalla
   spawnXf: 0.22,        // dónde aparece (fracción del ancho) — a la izquierda de la palanca
-  floorOffset: 56,      // px que baja el avatar respecto a FLOOR_F, para acercarlo a cámara.
+  floorOffset: -20,      // px que baja el avatar respecto a FLOOR_F, para acercarlo a cámara.
                         // Solo mueve al personaje: la palanca sigue anclada a FLOOR_F.
   speedWalk: 170,
   speedRun: 300,
@@ -99,7 +99,7 @@ export const EYES = {
   xf: 0.5,
   yf: 0.40,            // más chico = más arriba
   width: 700,          // ancho en pantalla
-  alpha: 0.30,         // discretos: son ambiente, no un elemento de juego
+  alpha: 0.60,         // discretos: son ambiente, no un elemento de juego
   depth: -95,          // justo delante del fondo (-100)
   blink: { rate: 14, minMs: 1100, maxMs: 3400 },
 };
@@ -147,9 +147,11 @@ export const LEVER = {
   file: 'assets/props/palancaAnim.png',
   frameWidth: 264,
   frameHeight: 288,
-  xf: 0.40,            // posición horizontal (fracción del ancho)
-  height: 230,
-  nearDist: 260,
+  xf: 0.50,            // posición horizontal (fracción del ancho)
+  yOffset: -10,        // px respecto a FLOOR_F: NEGATIVO sube, positivo baja.
+                       // Independiente de CHAR.floorOffset: mover uno no mueve al otro.
+  height: 180,
+  nearDist: 160,
   pull: { start: 0, end: 3, rate: 10 },  // animación al tirar (no se repite)
 };
 
@@ -192,7 +194,20 @@ export const TOUCH = {
 
 // Cápsula que contiene cada emoción flotante. orbYf = altura del orbe dentro del domo
 // (fracción desde arriba). El cristal ya viene translúcido (ver assets/README).
-export const CUPULA = { key: 'cupula', file: 'assets/props/cupula.png', height: 240, orbYf: 0.36, orbR: 34, rowYf: 0.72 };
+// `rowYf` = dónde se apoya la BASE de la cápsula (fracción de la altura). Está
+// alineada con los pies del personaje, para que se lean sobre el mismo suelo.
+// `creatureF` = alto de la criatura como fracción del alto de la cápsula: así, al
+// cambiar `height`, la criatura escala con el domo en vez de quedarse descolgada.
+export const CUPULA = {
+  key: 'cupula',
+  file: 'assets/props/cupula.png',
+  height: 190,        // alto de la cápsula en pantalla
+  rowYf: 0.88,        // base de la cápsula (fracción de la altura); más grande = más abajo
+  orbYf: 0.42,        // altura de la criatura DENTRO del domo (0 = arriba, 1 = base):
+                      // bajarlo la sube, y evita que la base opaca del cristal la tape
+  creatureF: 0.38,    // tamaño de la criatura respecto al alto de la cápsula
+  orbR: 34,           // radio del orbe de respaldo (emociones sin arte)
+};
 
 // Marco de las tarjetas de recomendación (pantalla final). blue = área azul útil para el texto.
 export const TARJETA = {

@@ -16,9 +16,17 @@ export function fitTextInBox(txt, boxW, boxH, maxSize) {
   return size;
 }
 
+// iOS en iPhone no implementa la API de pantalla completa (solo la permite en
+// videos), así que ahí no hay nada que hacer: se consulta y se oculta el botón.
+export function fullscreenAvailable(scene) {
+  return !!scene.scale.fullscreen?.available;
+}
+
 export function toggleFullscreen(scene) {
+  if (!fullscreenAvailable(scene)) return false;
   if (scene.scale.isFullscreen) scene.scale.stopFullscreen();
   else scene.scale.startFullscreen();
+  return true;
 }
 
 // Botones de la esquina superior derecha. `onSettings` es opcional: si no se pasa,
@@ -40,12 +48,18 @@ export function buildTopBar(scene, { onSettings } = {}) {
     x -= size + gap;
   }
 
-  const fs = scene.add.image(x, y, UI.fullscreen.key).setDepth(120);
-  fs.setDisplaySize(size, size).setInteractive({ useHandCursor: true });
-  fs.on('pointerover', () => fs.setDisplaySize(size * 1.08, size * 1.08));
-  fs.on('pointerout', () => fs.setDisplaySize(size, size));
-  fs.on('pointerdown', () => toggleFullscreen(scene));
-  made.push(fs);
+  // Si el navegador no soporta pantalla completa, no se dibuja el botón: un botón
+  // que no hace nada es peor que no tenerlo.
+  if (fullscreenAvailable(scene)) {
+    const fs = scene.add.image(x, y, UI.fullscreen.key).setDepth(120);
+    fs.setDisplaySize(size, size).setInteractive({ useHandCursor: true });
+    fs.on('pointerover', () => fs.setDisplaySize(size * 1.08, size * 1.08));
+    fs.on('pointerout', () => fs.setDisplaySize(size, size));
+    // pointerUP, no pointerdown: los navegadores móviles solo aceptan la petición
+    // de pantalla completa desde un gesto completado, y descartan la de pointerdown.
+    fs.on('pointerup', () => toggleFullscreen(scene));
+    made.push(fs);
+  }
 
   return made;
 }

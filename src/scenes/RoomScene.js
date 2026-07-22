@@ -30,7 +30,7 @@ export default class RoomScene extends Phaser.Scene {
     this.settingsOpen = false;
     this.settingsObjects = [];
     this.floorY = GAME.height * FLOOR_F;
-    this.capsuleY = GAME.height * CUPULA.rowYf; // las cápsulas flotan más arriba que el piso
+    this.capsuleY = GAME.height * CUPULA.rowYf; // base de las cápsulas, al nivel del personaje
 
     this.buildBackground();
     this.buildGround();
@@ -124,7 +124,9 @@ export default class RoomScene extends Phaser.Scene {
 
   buildLever() {
     this.leverX = GAME.width * LEVER.xf;
-    this.lever = this.add.sprite(this.leverX, this.floorY + 6, LEVER.key, 0).setOrigin(0.5, 1).setDepth(6);
+    // La base de la palanca se apoya en FLOOR_F desplazada por LEVER.yOffset.
+    this.leverY = this.floorY + LEVER.yOffset;
+    this.lever = this.add.sprite(this.leverX, this.leverY, LEVER.key, 0).setOrigin(0.5, 1).setDepth(6);
     this.lever.setScale(LEVER.height / this.lever.height);
     this.leverFx = this.lever.preFX ? this.lever.preFX.addGlow(0xff5a5f, 0, 0, false, 0.1, 16) : null;
     this.lever.setInteractive({ useHandCursor: true })
@@ -448,7 +450,7 @@ export default class RoomScene extends Phaser.Scene {
     const key = emoKey(emo);
     if (emo.sheet && this.textures.exists(key)) {
       orb = this.add.sprite(0, orbY, key).setOrigin(0.5, 0.5);
-      orb.setScale((CUPULA.orbR * 2.2) / orb.height);   // cabe dentro del domo
+      orb.setScale((capH * CUPULA.creatureF) / orb.height);   // escala con el domo
       orb.play(key);
     } else {
       orb = this.add.circle(0, orbY, CUPULA.orbR, emo.color).setStrokeStyle(3, 0xffffff, 0.5);
