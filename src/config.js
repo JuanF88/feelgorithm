@@ -122,6 +122,53 @@ export const CORRIDOR = {
   emergeXf: 0.21,     // hasta dónde camina solo antes de darle el control al jugador
 };
 
+// Escena que arranca el juego. 'Menu' es lo normal; ponerla en 'Hands' o 'Corridor'
+// sirve para probar un nivel suelto sin recorrer todo el ciclo.
+export const START_SCENE = 'Menu';
+
+// ── Escena 3: las manos del algoritmo ──
+// Los brazos salen del borde inferior y se orientan hacia el cursor. `originX` es
+// el punto por donde el brazo sale de cuadro (medido sobre el arte): es el pivote
+// del giro, así el brazo rota desde el hombro y no desde su centro.
+// `restDeg` es la dirección a la que apunta el brazo tal como está dibujado; sin
+// ese dato el brazo apuntaría 90 grados desviado del cursor.
+export const BG3 = { key: 'bg3', file: 'assets/bg/gameBackground3.png' };
+
+export const HANDS = {
+  left:  { key: 'handLeft',  file: 'assets/characters/handLeft.png',  originX: 0.2285, xf: 0.26, restDeg: -54.2 },
+  right: { key: 'handRight', file: 'assets/characters/handRight.png', originX: 0.7676, xf: 0.74, restDeg: -126.0 },
+  height: 560,          // alto del brazo en pantalla
+  alpha: 0.78,          // algo translúcidos: son la interfaz del algoritmo, no carne
+  baseYf: 1.04,         // la base del brazo queda un poco fuera de cuadro
+  maxTurnDeg: 30,       // cuánto puede girar hacia el cursor
+  reach: 54,            // px que se estira la mano activa
+  lerp: 0.09,           // suavidad del seguimiento (0-1); más chico = más suave
+  idleAmp: 7,           // balanceo cuando está en reposo (px)
+  idleSpeed: 0.0015,
+};
+
+// Los 6 elementos que giran en círculo. `items` es placeholder: el equipo los
+// reemplaza por los elementos reales (basta con cambiar label/color, o añadir
+// `key` si llegan con arte propio).
+// El fondo es un panel con marco: la órbita va centrada en su hueco interior
+// (medido sobre el arte: x 150..1230, y 60..690 de 1376x768).
+export const ORBIT = {
+  centerYf: 0.49,
+  rx: 560,              // radio horizontal
+  ry: 215,              // radio vertical (elipse = sensación de profundidad)
+  speed: 0.00020,       // radianes por milisegundo
+  itemR: 64,
+  minScale: 0.72,       // los de atrás se ven más pequeños y apagados
+  items: [
+    { id: 'e1', label: '1', color: 0xe63946 },
+    { id: 'e2', label: '2', color: 0xf77f00 },
+    { id: 'e3', label: '3', color: 0xffd166 },
+    { id: 'e4', label: '4', color: 0x6a994e },
+    { id: 'e5', label: '5', color: 0x457b9d },
+    { id: 'e6', label: '6', color: 0x7209b7 },
+  ],
+};
+
 // Pantalla que desciende. La imagen es un marco con la ventana central TRANSPARENTE:
 // el contenido va detrás y se ve por el hueco (medido sobre el PNG de 1536x1024).
 export const SCREEN = {

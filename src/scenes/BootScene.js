@@ -1,4 +1,4 @@
-import { CHAR, BG, BG2, SCREEN, LEVER, PROMPT, CUPULA, TARJETA, CONTENT, EMOTIONS, EMO_SPRITE, UI, EYES } from '../config.js';
+import { CHAR, BG, BG2, BG3, SCREEN, LEVER, PROMPT, CUPULA, TARJETA, CONTENT, EMOTIONS, EMO_SPRITE, UI, EYES, HANDS, START_SCENE } from '../config.js';
 
 import { EYES_ANIM } from '../ui/eyes.js';
 
@@ -14,6 +14,7 @@ export default class BootScene extends Phaser.Scene {
   preload() {
     this.load.image(BG.key, BG.file);
     this.load.image(BG2.key, BG2.file);
+    this.load.image(BG3.key, BG3.file);
     this.load.spritesheet(EYES.key, EYES.file, {
       frameWidth: EYES.frameWidth,
       frameHeight: EYES.frameHeight,
@@ -27,6 +28,8 @@ export default class BootScene extends Phaser.Scene {
     this.load.image(UI.play.key, UI.play.file);
     this.load.image(UI.settings.key, UI.settings.file);
     this.load.image(UI.fullscreen.key, UI.fullscreen.file);
+    this.load.image(HANDS.left.key, HANDS.left.file);
+    this.load.image(HANDS.right.key, HANDS.right.file);
     this.load.image(CUPULA.key, CUPULA.file);
     this.load.image(TARJETA.key, TARJETA.file);
     this.load.spritesheet(CHAR.key, CHAR.sheet, {
@@ -85,6 +88,6 @@ export default class BootScene extends Phaser.Scene {
       frameRate: EYES.blink.rate,
       repeat: 0,
     });
-    this.scene.start('Menu');
+    this.scene.start(START_SCENE);
   }
 }

@@ -1,5 +1,5 @@
-import { GAME, CHAR, BG2, CORRIDOR, CONTENT, PROMPT, TEXT } from '../config.js';
-import { mkText, showFinalCards, showRevealStub, clearButton, buildTopBar, fitTextInBox } from '../ui/hud.js';
+import { GAME, CHAR, BG2, CORRIDOR, PROMPT, TEXT } from '../config.js';
+import { mkText, buildTopBar, fitTextInBox } from '../ui/hud.js';
 import TouchControls, { hasTouch } from '../ui/touch.js';
 
 // Escena 2 — el pasillo. El personaje sale del túnel izquierdo, el jugador lo
@@ -128,29 +128,19 @@ export default class CorridorScene extends Phaser.Scene {
       alpha: 0,
       duration: 900,
       ease: 'Sine.easeOut',
-      onComplete: () => this.showCards(),
+      onComplete: () => this.toHands(),
     });
   }
 
-  showCards() {
+  // Tras el túnel viene la escena de las manos; las tarjetas se muestran allí,
+  // al final de ese nivel.
+  toHands() {
     this.phase = PHASE.CARDS;
     this.avatar.setVelocityX(0).setVisible(false);
-    const last = this.contentIndex >= CONTENT.length - 1;
-
-    this.endObjects = showFinalCards(this, {
+    this.scene.start('Hands', {
       emotion: this.emotion,
-      last,
-      onNext: () => {
-        if (last) {
-          this.endObjects.forEach((o) => o.destroy());
-          this.endObjects = [];
-          showRevealStub(this, this.session);
-        } else {
-          clearButton(this);
-          // Vuelve a la sala con el siguiente contenido, conservando el registro.
-          this.scene.start('Room', { contentIndex: this.contentIndex + 1, session: this.session });
-        }
-      },
+      contentIndex: this.contentIndex,
+      session: this.session,
     });
   }
 }
