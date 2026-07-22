@@ -1,7 +1,70 @@
 // UI compartida entre escenas: texto, botón y tarjetas de retroalimentación.
 // Vive aparte porque el ciclo termina en CorridorScene pero las tarjetas también
 // se usan desde RoomScene; duplicarlas garantizaba que se desincronizaran.
-import { GAME, FONT, COLORS, TEXT, TARJETA } from '../config.js';
+import { GAME, FONT, COLORS, TEXT, TARJETA, UI } from '../config.js';
+
+// Encoge el texto hasta que quepa dentro de la caja (ancho y alto).
+// El banner nuevo tiene un panel interior fijo; sin esto, un texto largo se salía.
+export function fitTextInBox(txt, boxW, boxH, maxSize) {
+  let size = maxSize;
+  txt.setWordWrapWidth(boxW, true);
+  txt.setFontSize(size);
+  while (size > 14 && (txt.height > boxH || txt.width > boxW)) {
+    size -= 2;
+    txt.setFontSize(size);
+  }
+  return size;
+}
+
+export function toggleFullscreen(scene) {
+  if (scene.scale.isFullscreen) scene.scale.stopFullscreen();
+  else scene.scale.startFullscreen();
+}
+
+// Botones de la esquina superior derecha. `onSettings` es opcional: si no se pasa,
+// solo se dibuja el de pantalla completa (el pasillo no tiene menú de ajustes).
+export function buildTopBar(scene, { onSettings } = {}) {
+  const size = UI.settings.size;
+  const { margin, gap } = UI.topRight;
+  let x = GAME.width - margin;
+  const y = margin;
+  const made = [];
+
+  if (onSettings) {
+    const s = scene.add.image(x, y, UI.settings.key).setDepth(120);
+    s.setDisplaySize(size, size).setInteractive({ useHandCursor: true });
+    s.on('pointerover', () => s.setScale(s.scaleX * 1.08, s.scaleY * 1.08));
+    s.on('pointerout', () => s.setDisplaySize(size, size));
+    s.on('pointerdown', onSettings);
+    made.push(s);
+    x -= size + gap;
+  }
+
+  // Pantalla completa: no hay arte para este botón, así que se dibuja con la misma
+  // paleta (marco redondeado + esquinas tipo visor) para que no desentone.
+  const fs = scene.add.container(x, y).setDepth(120);
+  const bg = scene.add.rectangle(0, 0, size, size, 0x1b2436, 0.92)
+    .setStrokeStyle(4, COLORS.accent, 0.8);
+  const g = scene.add.graphics();
+  const r = size * 0.26;
+  const arm = size * 0.13;
+  g.lineStyle(5, 0x8ee6f0, 1);
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([sx, sy]) => {
+    g.beginPath();
+    g.moveTo(sx * r, sy * r - sy * arm);
+    g.lineTo(sx * r, sy * r);
+    g.lineTo(sx * r - sx * arm, sy * r);
+    g.strokePath();
+  });
+  fs.add([bg, g]);
+  fs.setSize(size, size).setInteractive({ useHandCursor: true });
+  fs.on('pointerover', () => bg.setFillStyle(0x2b3852, 0.95));
+  fs.on('pointerout', () => bg.setFillStyle(0x1b2436, 0.92));
+  fs.on('pointerdown', () => toggleFullscreen(scene));
+  made.push(fs);
+
+  return made;
+}
 
 export function mkText(scene, x, y, str, size, extra = {}) {
   return scene.add.text(x, y, str, {

@@ -85,6 +85,25 @@ export const CONTENT = [
 // Fondo de la sala-laboratorio (se escala para cubrir el canvas).
 export const BG = { key: 'bg', file: 'assets/bg/gameBackground.png' };
 
+// Ojos del algoritmo: presencia de fondo en el centro de la pantalla.
+// Hoja de 3 frames generada desde assets/bg/eyes/ (abiertos, entrecerrados,
+// cerrados), normalizados al mismo ancho —si no, "respiran" al parpadear— y con
+// el desenfoque ya aplicado en la imagen, para que funcione aunque el navegador
+// caiga al renderizador Canvas (donde los filtros de Phaser no existen).
+// El parpadeo recorre 0-1-2-1-0 y se repite a intervalos irregulares.
+export const EYES = {
+  key: 'eyes',
+  file: 'assets/bg/eyesSheet.png',
+  frameWidth: 900,
+  frameHeight: 340,
+  xf: 0.5,
+  yf: 0.50,
+  width: 900,          // ancho en pantalla
+  alpha: 0.30,         // discretos: son ambiente, no un elemento de juego
+  depth: -95,          // justo delante del fondo (-100)
+  blink: { rate: 14, minMs: 3200, maxMs: 8000 },
+};
+
 // ── Escena 2: el pasillo que une los dos túneles ──
 // El personaje sale por el túnel izquierdo, recorre el pasillo y desaparece por
 // el derecho; ahí termina el ciclo y salen las tarjetas.
@@ -139,14 +158,35 @@ export const LEVER = {
 // oculta, así no compite con la pantalla. Por eso puede ocupar la franja media:
 // cuando aparece ("¿Qué sentiste?"), la pantalla ya se retrajo.
 export const PROMPT = {
-  yf: 0.18,            // posición vertical del centro: ocupa el hueco que deja la pantalla
+  yf: 0.20,            // posición vertical del centro: ocupa el hueco que deja la pantalla
   color: '#10131c',    // oscuro: va encima de la placa clara
   banner: {
     key: 'banner',
-    file: 'assets/props/banner.png',
-    displayWidth: 900, // ancho en pantalla
-    textYf: -0.02,     // desplazamiento del texto respecto al centro de la placa
+    // Versión recortada: el PNG original trae ~45% de margen transparente, que hacía
+    // imposible centrar el texto. `panel` = el rectángulo blanco interior, medido
+    // sobre la imagen recortada. El texto se centra y se ajusta SOLO a esa caja.
+    file: 'assets/props/bannerTrim.png',
+    displayWidth: 820,
+    panel: { x0: 0.0786, x1: 0.9223, y0: 0.1809, y1: 0.8294 },
+    padding: 0.90,     // fracción del panel que puede ocupar el texto
   },
+};
+
+// Botones de interfaz. Los PNG originales venían con mucho margen transparente:
+// se usan las versiones recortadas para que el tamaño en pantalla sea el real.
+export const UI = {
+  play:     { key: 'btnPlay',     file: 'assets/props/playButtonTrim.png',     width: 360 },
+  settings: { key: 'btnSettings', file: 'assets/props/settingsButtonTrim.png', size: 96 },
+  topRight: { margin: 70, gap: 18 },   // esquina superior derecha: ajustes + pantalla completa
+};
+
+// Controles táctiles: solo aparecen en dispositivos con pantalla táctil.
+// Una palanca para moverse y UN botón de acción, como pidió el diseño.
+export const TOUCH = {
+  stick:  { xf: 0.13, yf: 0.76, radius: 120, thumb: 52, deadZone: 0.18, runAt: 0.75 },
+  action: { xf: 0.87, yf: 0.78, radius: 92 },
+  alpha: 0.55,          // discretos para no tapar la escena
+  alphaActive: 0.9,
 };
 
 // Cápsula que contiene cada emoción flotante. orbYf = altura del orbe dentro del domo

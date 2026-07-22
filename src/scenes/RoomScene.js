@@ -1,5 +1,8 @@
 import { COLORS, EMOTIONS, CONTENT, CHAR, BG, SCREEN, LEVER, PROMPT, CUPULA, TEXT, FLOOR_F, EMO_NEAR, GAME, FONT } from '../config.js';
 import { emoKey } from './BootScene.js';
+import { buildTopBar, fitTextInBox } from '../ui/hud.js';
+import TouchControls, { hasTouch } from '../ui/touch.js';
+import { buildEyes } from '../ui/eyes.js';
 
 const STATE = { IDLE: 'idle', PLAYING: 'playing', ASKING: 'asking', PICKED: 'picked' };
 const CONTENT_MS = 5000; // duración placeholder; el video real durará ~15s
@@ -38,6 +41,7 @@ export default class RoomScene extends Phaser.Scene {
     this.buildBubble();
     this.buildControls();
     this.buildSettingsButton();
+    this.buildTouchControls();
 
     this.setState(STATE.IDLE);
   }
@@ -54,6 +58,7 @@ export default class RoomScene extends Phaser.Scene {
     const { width, height } = GAME;
     const bg = this.add.image(width / 2, height / 2, BG.key).setDepth(-100);
     bg.setScale(Math.max(width / bg.width, height / bg.height));
+    buildEyes(this);   // los ojos del algoritmo, al fondo del centro
   }
 
   // Suelo invisible sobre el que se para el avatar. Va CHAR.floorOffset px por
@@ -70,12 +75,22 @@ export default class RoomScene extends Phaser.Scene {
     const { width, height } = GAME;
     const b = PROMPT.banner;
     this.banner = this.add.image(width / 2, height * PROMPT.yf, b.key).setDepth(11);
-    this.banner.setScale(b.displayWidth / this.banner.width);
+    this.bannerScale = b.displayWidth / this.banner.width;
+    this.banner.setScale(this.bannerScale);
     this.banner.setVisible(false);
 
-    this.prompt = this.mkText(width / 2, this.banner.y + this.banner.displayHeight * b.textYf, '', TEXT.prompt, {
+    // El texto se centra en el PANEL blanco del marco, no en la imagen entera.
+    const bw = this.banner.displayWidth;
+    const bh = this.banner.displayHeight;
+    this.panelBox = {
+      w: (b.panel.x1 - b.panel.x0) * bw * b.padding,
+      h: (b.panel.y1 - b.panel.y0) * bh * b.padding,
+      cx: width / 2 + ((b.panel.x0 + b.panel.x1) / 2 - 0.5) * bw,
+      cy: this.banner.y + ((b.panel.y0 + b.panel.y1) / 2 - 0.5) * bh,
+    };
+
+    this.prompt = this.mkText(this.panelBox.cx, this.panelBox.cy, '', TEXT.prompt, {
       align: 'center', color: PROMPT.color, fontStyle: 'bold',
-      wordWrap: { width: this.banner.displayWidth * 0.84 },
     }).setOrigin(0.5).setDepth(12);
   }
 
@@ -142,15 +157,21 @@ export default class RoomScene extends Phaser.Scene {
 
   // ─────────────────────────────── configuración / menú ───────────────────────────────
 
+  // Ajustes (con su arte) + pantalla completa, arriba a la derecha.
   buildSettingsButton() {
-    const btn = this.add.container(GAME.width - 64, 64).setDepth(120);
-    const bg = this.add.circle(0, 0, 40, 0x1b1830, 0.9).setStrokeStyle(3, COLORS.accent, 0.85);
-    const gear = this.mkText(0, -2, '⚙', 46, { color: '#f4d35e' }).setOrigin(0.5);
-    btn.add([bg, gear]);
-    btn.setSize(84, 84).setInteractive({ useHandCursor: true });
-    btn.on('pointerover', () => bg.setFillStyle(0x2b2740, 0.95));
-    btn.on('pointerout', () => bg.setFillStyle(0x1b1830, 0.9));
-    btn.on('pointerdown', () => this.openSettings());
+    buildTopBar(this, { onSettings: () => this.openSettings() });
+  }
+
+  // Palanca y botón de acción, solo en pantallas táctiles.
+  buildTouchControls() {
+    if (!hasTouch()) return;
+    this.touch = new TouchControls(this);
+  }
+
+  // Enter en teclado o el botón de acción en táctil: mismo camino.
+  actionPressed() {
+    return Phaser.Input.Keyboard.JustDown(this.enterKey)
+      || (this.touch ? this.touch.actionJustPressed() : false);
   }
 
   openSettings() {
@@ -218,10 +239,12 @@ export default class RoomScene extends Phaser.Scene {
       return;
     }
 
-    const left = this.cursors.left.isDown || this.keys.A.isDown;
-    const right = this.cursors.right.isDown || this.keys.D.isDown;
+    // La palanca táctil se suma al teclado: llevarla al tope equivale a correr.
+    const axis = this.touch ? this.touch.axisX : 0;
+    const left = this.cursors.left.isDown || this.keys.A.isDown || axis < 0;
+    const right = this.cursors.right.isDown || this.keys.D.isDown || axis > 0;
     const jump = this.cursors.up.isDown || this.keys.W.isDown || this.keys.SPACE.isDown;
-    const running = this.cursors.shift.isDown;
+    const running = this.cursors.shift.isDown || (this.touch ? this.touch.running : false);
     const onFloor = this.avatar.body.blocked.down || this.avatar.body.touching.down;
     const speed = running ? CHAR.speedRun : CHAR.speedWalk;
 
@@ -245,7 +268,7 @@ export default class RoomScene extends Phaser.Scene {
     if (near !== this.leverNear) { this.leverNear = near; this.glowLever(near); }
     if (near) {
       this.requestBubble('Activa la palanca');
-      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) this.onLever();
+      if (this.actionPressed()) this.onLever();
     } else {
       this.dismissBubble();
     }
@@ -265,7 +288,7 @@ export default class RoomScene extends Phaser.Scene {
     }
     if (nearest) {
       this.requestBubble(`Selecciona ${nearest.emo.label}`, nearest.emo.color);
-      if (Phaser.Input.Keyboard.JustDown(this.enterKey)) this.onPick(nearest);
+      if (this.actionPressed()) this.onPick(nearest);
     } else {
       this.dismissBubble();
     }
@@ -496,15 +519,13 @@ export default class RoomScene extends Phaser.Scene {
     // La placa acompaña al texto: sin texto, no hay placa.
     this.banner.setVisible(!!txt);
     if (!txt) return;
+    // Ajusta el tamaño de letra para que quepa dentro del panel blanco.
+    fitTextInBox(this.prompt, this.panelBox.w, this.panelBox.h, TEXT.prompt);
+    this.prompt.setPosition(this.panelBox.cx, this.panelBox.cy);
     this.prompt.setScale(0.9);
-    this.banner.setScale((PROMPT.banner.displayWidth / this.banner.width) * 0.9);
+    this.banner.setScale(this.bannerScale * 0.9);
     this.tweens.add({ targets: this.prompt, scale: 1, duration: 180, ease: 'Back.easeOut' });
-    this.tweens.add({
-      targets: this.banner,
-      scale: PROMPT.banner.displayWidth / this.banner.width,
-      duration: 180,
-      ease: 'Back.easeOut',
-    });
+    this.tweens.add({ targets: this.banner, scale: this.bannerScale, duration: 180, ease: 'Back.easeOut' });
   }
 
   logChoice(contentId, emotionId) {

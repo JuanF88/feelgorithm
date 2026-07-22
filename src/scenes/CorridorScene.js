@@ -1,5 +1,6 @@
 import { GAME, CHAR, BG2, CORRIDOR, CONTENT, PROMPT, TEXT } from '../config.js';
-import { mkText, showFinalCards, showRevealStub, clearButton } from '../ui/hud.js';
+import { mkText, showFinalCards, showRevealStub, clearButton, buildTopBar, fitTextInBox } from '../ui/hud.js';
+import TouchControls, { hasTouch } from '../ui/touch.js';
 
 // Escena 2 — el pasillo. El personaje sale del túnel izquierdo, el jugador lo
 // lleva por el camino que une las dos bocas y al entrar en la derecha desaparece:
@@ -44,6 +45,8 @@ export default class CorridorScene extends Phaser.Scene {
     this.buildPrompt();
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('A,D');
+    buildTopBar(this);                                   // solo pantalla completa
+    if (hasTouch()) this.touch = new TouchControls(this); // palanca para caminar
   }
 
   buildPrompt() {
@@ -51,11 +54,21 @@ export default class CorridorScene extends Phaser.Scene {
     const b = PROMPT.banner;
     this.banner = this.add.image(width / 2, height * PROMPT.yf, b.key).setDepth(11);
     this.banner.setScale(b.displayWidth / this.banner.width);
-    this.prompt = mkText(this, width / 2, this.banner.y + this.banner.displayHeight * b.textYf,
-      'Sigue el pasillo hasta la otra puerta', TEXT.prompt, {
-        align: 'center', color: PROMPT.color, fontStyle: 'bold',
-        wordWrap: { width: this.banner.displayWidth * 0.84 },
-      }).setOrigin(0.5).setDepth(12);
+
+    // Igual que en la sala: el texto se centra y se ajusta al panel blanco del marco.
+    const bw = this.banner.displayWidth;
+    const bh = this.banner.displayHeight;
+    const box = {
+      w: (b.panel.x1 - b.panel.x0) * bw * b.padding,
+      h: (b.panel.y1 - b.panel.y0) * bh * b.padding,
+      cx: width / 2 + ((b.panel.x0 + b.panel.x1) / 2 - 0.5) * bw,
+      cy: this.banner.y + ((b.panel.y0 + b.panel.y1) / 2 - 0.5) * bh,
+    };
+    this.prompt = mkText(this, box.cx, box.cy, 'Sigue el pasillo hasta la otra puerta', TEXT.prompt, {
+      align: 'center', color: PROMPT.color, fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(12);
+    fitTextInBox(this.prompt, box.w, box.h, TEXT.prompt);
+    this.prompt.setPosition(box.cx, box.cy);
   }
 
   hidePrompt() {
@@ -78,9 +91,10 @@ export default class CorridorScene extends Phaser.Scene {
     }
 
     if (this.phase === PHASE.WALKING) {
-      const left = this.cursors.left.isDown || this.keys.A.isDown;
-      const right = this.cursors.right.isDown || this.keys.D.isDown;
-      const running = this.cursors.shift.isDown;
+      const axis = this.touch ? this.touch.axisX : 0;
+      const left = this.cursors.left.isDown || this.keys.A.isDown || axis < 0;
+      const right = this.cursors.right.isDown || this.keys.D.isDown || axis > 0;
+      const running = this.cursors.shift.isDown || (this.touch ? this.touch.running : false);
       const speed = running ? CHAR.speedRun : CHAR.speedWalk;
 
       if (left) { this.avatar.setVelocityX(-speed); this.avatar.setFlipX(true); }

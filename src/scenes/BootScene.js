@@ -1,4 +1,6 @@
-import { CHAR, BG, BG2, SCREEN, LEVER, PROMPT, CUPULA, TARJETA, CONTENT, EMOTIONS, EMO_SPRITE } from '../config.js';
+import { CHAR, BG, BG2, SCREEN, LEVER, PROMPT, CUPULA, TARJETA, CONTENT, EMOTIONS, EMO_SPRITE, UI, EYES } from '../config.js';
+
+import { EYES_ANIM } from '../ui/eyes.js';
 
 // Clave de textura de la criatura de una emoción (solo si tiene arte).
 export const emoKey = (emo) => `emo_${emo.id}`;
@@ -12,12 +14,18 @@ export default class BootScene extends Phaser.Scene {
   preload() {
     this.load.image(BG.key, BG.file);
     this.load.image(BG2.key, BG2.file);
+    this.load.spritesheet(EYES.key, EYES.file, {
+      frameWidth: EYES.frameWidth,
+      frameHeight: EYES.frameHeight,
+    });
     this.load.image(SCREEN.key, SCREEN.file);
     this.load.spritesheet(LEVER.key, LEVER.file, {
       frameWidth: LEVER.frameWidth,
       frameHeight: LEVER.frameHeight,
     });
     this.load.image(PROMPT.banner.key, PROMPT.banner.file);
+    this.load.image(UI.play.key, UI.play.file);
+    this.load.image(UI.settings.key, UI.settings.file);
     this.load.image(CUPULA.key, CUPULA.file);
     this.load.image(TARJETA.key, TARJETA.file);
     this.load.spritesheet(CHAR.key, CHAR.sheet, {
@@ -67,6 +75,13 @@ export default class BootScene extends Phaser.Scene {
       key: 'lever-pull',
       frames: this.anims.generateFrameNumbers(LEVER.key, { start: LEVER.pull.start, end: LEVER.pull.end }),
       frameRate: LEVER.pull.rate,
+      repeat: 0,
+    });
+    // Parpadeo: abre - entrecierra - cierra - entrecierra - abre.
+    this.anims.create({
+      key: EYES_ANIM,
+      frames: this.anims.generateFrameNumbers(EYES.key, { frames: [0, 1, 2, 1, 0] }),
+      frameRate: EYES.blink.rate,
       repeat: 0,
     });
     this.scene.start('Menu');

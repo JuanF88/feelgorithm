@@ -1,4 +1,6 @@
-import { GAME, FONT, COLORS, BG, LEVER } from '../config.js';
+import { GAME, FONT, COLORS, BG, LEVER, UI } from '../config.js';
+import { buildTopBar } from '../ui/hud.js';
+import { buildEyes } from '../ui/eyes.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() {
@@ -8,9 +10,11 @@ export default class MenuScene extends Phaser.Scene {
   create() {
     const { width, height } = GAME;
 
-    const bg = this.add.image(width / 2, height / 2, BG.key);
+    const bg = this.add.image(width / 2, height / 2, BG.key).setDepth(-100);
     bg.setScale(Math.max(width / bg.width, height / bg.height));
-    this.add.rectangle(width / 2, height / 2, width, height, 0x0a0812, 0.6); // oscurecer para contraste
+    // El velo oscuro va ENTRE el fondo y los ojos: si no, los apagaría del todo.
+    this.add.rectangle(width / 2, height / 2, width, height, 0x0a0812, 0.6).setDepth(-60);
+    buildEyes(this, { depth: -50 });
 
     // joystick decorativo
     if (this.textures.exists(LEVER.key)) {
@@ -22,7 +26,8 @@ export default class MenuScene extends Phaser.Scene {
     this.add.rectangle(width / 2, height * 0.55, 260, 5, COLORS.accent);
     this.txt(width / 2, height * 0.61, 'Reconoce cómo te manipulan: siéntelo, nómbralo, actúa.', 34, '#c9c6da', { align: 'center' }).setOrigin(0.5);
 
-    this.makeButton(width / 2, height * 0.74, '▶   Jugar', () => this.scene.start('Room'));
+    this.makePlayButton(width / 2, height * 0.76, () => this.scene.start('Room'));
+    buildTopBar(this);   // pantalla completa (útil sobre todo en celular)
 
     this.txt(width / 2, height - 40, 'Prototipo — UNESCO Youth Hackathon 2026', 22, '#6a6486').setOrigin(0.5);
 
@@ -34,16 +39,16 @@ export default class MenuScene extends Phaser.Scene {
     return this.add.text(x, y, str, { fontFamily: FONT, fontSize: `${size}px`, color, resolution: 2, ...extra });
   }
 
-  makeButton(x, y, text, onClick) {
-    const c = this.add.container(x, y);
-    const bg = this.add.rectangle(0, 0, 440, 88, COLORS.accent).setStrokeStyle(4, 0x000000, 0.2);
-    const label = this.txt(0, 0, text, 42, '#12101a', { fontStyle: 'bold' }).setOrigin(0.5);
-    c.add([bg, label]);
-    c.setSize(440, 88);
-    c.setInteractive({ useHandCursor: true });
-    c.on('pointerover', () => { bg.setFillStyle(0xffe08a); c.setScale(1.04); });
-    c.on('pointerout', () => { bg.setFillStyle(COLORS.accent); c.setScale(1); });
-    c.on('pointerdown', onClick);
-    return c;
+  // Botón de jugar con su arte. La imagen ya lleva el triángulo, así que no
+  // necesita etiqueta: se apoya en un icono que se entiende en cualquier idioma.
+  makePlayButton(x, y, onClick) {
+    const btn = this.add.image(x, y, UI.play.key);
+    const scale = UI.play.width / btn.width;
+    btn.setScale(scale);
+    btn.setInteractive({ useHandCursor: true });
+    btn.on('pointerover', () => this.tweens.add({ targets: btn, scale: scale * 1.06, duration: 120 }));
+    btn.on('pointerout', () => this.tweens.add({ targets: btn, scale, duration: 120 }));
+    btn.on('pointerdown', onClick);
+    return btn;
   }
 }

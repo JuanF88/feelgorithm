@@ -8,7 +8,16 @@
   <link rel="manifest" href="manifest.webmanifest" />
   <style>
     html, body { margin: 0; height: 100%; background: #12101a; overflow: hidden; }
-    #game { width: 100vw; height: 100vh; position: relative; }
+    /* `position: fixed` + inset en vez de 100vw/100vh: en móvil, 100vh incluye la
+       franja que ocupan las barras del navegador, así que el canvas quedaba más alto
+       que el área visible y se cortaba por abajo — sobre todo al girar el teléfono. */
+    #game {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;   /* alto real del viewport en navegadores modernos */
+    }
     /* Phaser (Scale.FIT) centra y ajusta el canvas dentro de #game */
 
     /* El canvas es 16:9 fijo; si la ventana no lo es, Scale.FIT deja franjas a los

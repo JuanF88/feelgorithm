@@ -23,4 +23,13 @@ const config = {
 };
 
 // eslint-disable-next-line no-new
-new Phaser.Game(config);
+const game = new Phaser.Game(config);
+
+// Al girar el teléfono, el navegador reporta el tamaño nuevo con retraso: si Phaser
+// mide en ese instante se queda con el viewport viejo y la imagen aparece cortada.
+// Se fuerza un recálculo poco después del giro y al volver a la pestaña.
+const refresh = () => game.scale.refresh();
+window.addEventListener('orientationchange', () => setTimeout(refresh, 250));
+window.addEventListener('resize', refresh);
+window.addEventListener('pageshow', refresh);
+if (window.visualViewport) window.visualViewport.addEventListener('resize', refresh);
