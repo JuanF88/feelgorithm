@@ -101,7 +101,7 @@ export const EYES = {
   width: 700,          // ancho en pantalla
   alpha: 0.30,         // discretos: son ambiente, no un elemento de juego
   depth: -95,          // justo delante del fondo (-100)
-  blink: { rate: 14, minMs: 3200, maxMs: 8000 },
+  blink: { rate: 14, minMs: 1100, maxMs: 3400 },
 };
 
 // ── Escena 2: el pasillo que une los dos túneles ──
