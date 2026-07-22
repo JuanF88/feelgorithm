@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560" viewBox="0 0 1000 560" font-family="Segoe UI, system-ui, sans-serif">
+  <rect width="1000" height="560" fill="#0a0a12"/>
+  <!-- barras de "glitch" -->
+  <rect x="0" y="120" width="1000" height="10" fill="#7209b7" opacity="0.5"/>
+  <rect x="0" y="300" width="1000" height="6" fill="#2ec4ff" opacity="0.5"/>
+  <rect x="0" y="430" width="1000" height="12" fill="#e63946" opacity="0.35"/>
+  <!-- "rostro" sintético placeholder -->
+  <rect x="360" y="150" width="280" height="230" rx="10" fill="#23233a" stroke="#4b3a7a" stroke-width="3"/>
+  <text x="500" y="275" font-size="24" fill="#8f7fc9" text-anchor="middle" letter-spacing="4">SYNTHETIC</text>
+  <!-- botón play -->
+  <circle cx="500" cy="265" r="46" fill="#000000" opacity="0.35"/>
+  <path d="M486 242 l34 23 l-34 23 z" fill="#ffffff"/>
+  <!-- etiquetas -->
+  <text x="500" y="80" font-size="30" font-weight="800" fill="#b19bff" text-anchor="middle">VIDEO GENERADO CON IA (SIMULACIÓN)</text>
+  <text x="500" y="500" font-size="22" fill="#f4d35e" text-anchor="middle">Ejemplo de prueba — reemplazar por contenido sintético del equipo</text>
+</svg>

@@ -1,0 +1,14 @@
+{
+  "name": "Feelgorithm",
+  "short_name": "Feelgorithm",
+  "description": "Aprende a reconocer la manipulación mediática usando tu propia emoción como detector.",
+  "lang": "es",
+  "start_url": ".",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#12101a",
+  "theme_color": "#12101a",
+  "icons": [
+    { "src": "assets/icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}
