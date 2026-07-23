@@ -17,7 +17,7 @@ export function fitTextInBox(txt, boxW, boxH, maxSize) {
 }
 
 // iOS en iPhone no implementa la API de pantalla completa (solo la permite en
-// videos), así que ahí no hay nada que hacer: se consulta y se oculta el botón.
+// videos). No se puede forzar, pero sí se puede explicar: ver `showInstallHint`.
 export function fullscreenAvailable(scene) {
   return !!scene.scale.fullscreen?.available;
 }
@@ -37,6 +37,7 @@ export function buildTopBar(scene, { onSettings } = {}) {
   let x = GAME.width - margin;
   const y = margin;
   const made = [];
+  scene.installHint = null;   // la escena se reinicia, la referencia vieja no vale
 
   if (onSettings) {
     const s = scene.add.image(x, y, UI.settings.key).setDepth(120);
@@ -48,20 +49,51 @@ export function buildTopBar(scene, { onSettings } = {}) {
     x -= size + gap;
   }
 
-  // Si el navegador no soporta pantalla completa, no se dibuja el botón: un botón
-  // que no hace nada es peor que no tenerlo.
-  if (fullscreenAvailable(scene)) {
-    const fs = scene.add.image(x, y, UI.fullscreen.key).setDepth(120);
-    fs.setDisplaySize(size, size).setInteractive({ useHandCursor: true });
-    fs.on('pointerover', () => fs.setDisplaySize(size * 1.08, size * 1.08));
-    fs.on('pointerout', () => fs.setDisplaySize(size, size));
-    // pointerUP, no pointerdown: los navegadores móviles solo aceptan la petición
-    // de pantalla completa desde un gesto completado, y descartan la de pointerdown.
-    fs.on('pointerup', () => toggleFullscreen(scene));
-    made.push(fs);
-  }
+  // El botón se dibuja siempre. Antes se ocultaba donde no hay API de pantalla
+  // completa, pero en el móvil eso lo hacía desaparecer justo donde más falta
+  // hace: ahora, si no puede activarla, al menos explica cómo conseguirla.
+  const fs = scene.add.image(x, y, UI.fullscreen.key).setDepth(120);
+  fs.setDisplaySize(size, size).setInteractive({ useHandCursor: true });
+  fs.on('pointerover', () => fs.setDisplaySize(size * 1.08, size * 1.08));
+  fs.on('pointerout', () => fs.setDisplaySize(size, size));
+  // pointerUP, no pointerdown: los navegadores móviles solo aceptan la petición
+  // de pantalla completa desde un gesto completado, y descartan la de pointerdown.
+  fs.on('pointerup', () => {
+    if (!toggleFullscreen(scene)) showInstallHint(scene);
+  });
+  made.push(fs);
 
   return made;
+}
+
+// Aviso para iPhone: la única forma de jugar sin las barras del navegador es
+// instalar la PWA. Se cierra tocando en cualquier parte o solo.
+export function showInstallHint(scene) {
+  if (scene.installHint) return scene.installHint;
+  const { width, height } = GAME;
+  const box = scene.add.container(width / 2, height * 0.5).setDepth(300);
+
+  const veil = scene.add.rectangle(0, 0, width, height, 0x08070f, 0.72);
+  const panel = scene.add.rectangle(0, 0, 1120, 340, 0x171423, 0.98)
+    .setStrokeStyle(4, COLORS.accent, 0.85);
+  const title = mkText(scene, 0, -96, 'Pantalla completa', 46, { fontStyle: 'bold' }).setOrigin(0.5);
+  const body = mkText(scene, 0, 10,
+    'Este navegador no la permite desde el juego.\nToca  Compartir  y elige «Añadir a pantalla de inicio»:\nasí se abre sin barras.',
+    32, { align: 'center', color: '#c9c6da', lineSpacing: 12 }).setOrigin(0.5);
+  const close = mkText(scene, 0, 122, 'Toca para cerrar', 24, { color: '#8a84a8' }).setOrigin(0.5);
+  box.add([veil, panel, title, body, close]);
+
+  const dismiss = () => {
+    if (!scene.installHint) return;
+    scene.installHint = null;
+    box.destroy();
+  };
+  veil.setInteractive({ useHandCursor: true }).on('pointerup', dismiss);
+  panel.setInteractive({ useHandCursor: true }).on('pointerup', dismiss);
+  scene.time.delayedCall(7000, dismiss);
+
+  scene.installHint = box;
+  return box;
 }
 
 export function mkText(scene, x, y, str, size, extra = {}) {

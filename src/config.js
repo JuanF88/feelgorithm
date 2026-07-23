@@ -224,7 +224,15 @@ export const PROMPT = {
 // Botones de interfaz. Los PNG originales venían con mucho margen transparente:
 // se usan las versiones recortadas para que el tamaño en pantalla sea el real.
 export const UI = {
-  play:     { key: 'btnPlay',     file: 'assets/props/playButtonTrim.png',     width: 360 },
+  // Logotipo del juego (las letras ya son las criaturas-emoción). El PNG viene
+  // recortado al contenido, así que `width` es el ancho real en pantalla.
+  // `width` en null = tamaño nativo del PNG (1042 px): así no se reescala y sale
+  // nítido. Si lo agrandas por encima de eso, el navegador inventa píxeles y se
+  // ve borroso; para verlo más grande hay que reexportar el PNG más grande.
+  // `glow`: halo blanco detrás del logo (letras negras sobre fondo oscuro).
+  // Suaviza los filos, por eso está apagado.
+  title:    { key: 'title',       file: 'assets/props/title.png',              width: 1300, yf: 0.375, glow: 0 },
+  play:     { key: 'btnPlay',     file: 'assets/props/playButtonTrim.png',     width: 290 },
   settings:   { key: 'btnSettings',   file: 'assets/props/settingsButtonTrim.png',       size: 96 },
   fullscreen: { key: 'btnFullscreen', file: 'assets/props/completeScreenButtonTrim.png' },
   topRight: { margin: 70, gap: 18 },   // esquina superior derecha: ajustes + pantalla completa
