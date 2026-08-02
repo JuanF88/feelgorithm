@@ -437,11 +437,12 @@ export const TOUCH = {
 export const CUPULA = {
   key: "cupula",
   file: "assets/props/cupula.png",
-  height: 190, // alto de la cápsula en pantalla
+  height: 290, // alto de la cápsula en pantalla (el PNG ya viene recortado a
+  //   su contenido, así que este número = alto real visible)
   rowYf: 0.88, // base de la cápsula (fracción de la altura); más grande = más abajo
-  orbYf: 0.42, // altura de la criatura DENTRO del domo (0 = arriba, 1 = base):
-  // bajarlo la sube, y evita que la base opaca del cristal la tape
-  creatureF: 0.38, // tamaño de la criatura respecto al alto de la cápsula
+  orbYf: 0.52, // altura de la criatura DENTRO del domo (0 = arriba, 1 = base):
+  // subirlo la baja, y evita que la base opaca del cristal la tape
+  creatureF: 0.35, // tamaño de la criatura respecto al alto de la cápsula
   orbR: 34, // radio del orbe de respaldo (emociones sin arte)
 };
 
