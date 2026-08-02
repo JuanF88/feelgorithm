@@ -1,6 +1,15 @@
 import { GAME, FONT, BG, UI, CONTENT } from '../config.js';
-import { buildTopBar, fullscreenAvailable } from '../ui/hud.js';
+import { buildTopBar, fullscreenAvailable, openModal, menuButton } from '../ui/hud.js';
 import { playSfx } from '../audio.js';
+import { hasGender, setGender } from '../db.js';
+
+// Opciones de la pregunta única de género. `id` es lo que se guarda; `label`, lo visible.
+const GENEROS = [
+  { id: 'masculino', label: 'Masculino' },
+  { id: 'femenino', label: 'Femenino' },
+  { id: 'otro', label: 'Otro' },
+  { id: 'prefiero_no_decir', label: 'Prefiero no decir' },
+];
 
 export default class MenuScene extends Phaser.Scene {
   constructor() {
@@ -39,10 +48,41 @@ export default class MenuScene extends Phaser.Scene {
     this.input.keyboard.once('keydown-ENTER', () => this.startGame());
   }
 
-  // Empieza con una noticia AL AZAR (distinta cada partida).
+  // La primera vez pregunta el género (una sola vez en la vida del dispositivo);
+  // después arranca directo. La respuesta queda en localStorage, así no se repite.
   startGame() {
+    if (hasGender()) { this.launch(); return; }
+    this.askGender((id) => { setGender(id); this.launch(); });
+  }
+
+  // Empieza con una noticia AL AZAR (distinta cada partida).
+  launch() {
     const contentIndex = Phaser.Math.Between(0, CONTENT.length - 1);
     this.scene.start('Room', { contentIndex, playedCount: 0, session: [] });
+  }
+
+  // Overlay de la pregunta única de género, con el estilo de modal del juego.
+  // Bloquea el fondo hasta que se elige.
+  askGender(onPick) {
+    const bh = 90, gap = 20;
+    const modal = openModal(this, {
+      w: 940,
+      h: 300 + GENEROS.length * (bh + gap),
+      title: '¿Con qué género te identificas?',
+      subtitle: 'Solo lo preguntamos una vez, de forma anónima, para entender a quién llega el juego.',
+      depth: 400,
+    });
+
+    const created = [...modal.parts];
+    let y = modal.contentTop + bh / 2;
+    GENEROS.forEach((g) => {
+      const btn = menuButton(this, modal.cx, y, 640, bh, g.label, () => {
+        created.forEach((o) => o.destroy());
+        onPick(g.id);
+      }, { depth: modal.depth + 1 });
+      created.push(btn);
+      y += bh + gap;
+    });
   }
 
   txt(x, y, str, size, color, extra = {}) {

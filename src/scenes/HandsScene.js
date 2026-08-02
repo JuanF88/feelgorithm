@@ -2,6 +2,7 @@ import { GAME, BG3, HANDS, ORBIT, ACTIONS, TARJETA_FINAL, CONTENT, EMO_MATRIX, T
 import { mkText, buildTopBar, openSettings, fitTextInBox } from '../ui/hud.js';
 import { playSfx } from '../audio.js';
 import { MATRIZ } from '../data/matriz.js';
+import { recordDecision } from '../db.js';
 
 // Escena 3 — la decisión digital. Las manos del algoritmo intentan agarrar lo que
 // miras; los elementos que giran en círculo son las ACCIONES (me gusta, comentar,
@@ -147,6 +148,7 @@ export default class HandsScene extends Phaser.Scene {
     const cid = CONTENT[this.contentIndex]?.id;
     const entry = [...this.session].reverse().find((e) => e.contentId === cid);
     if (entry) entry.decision = node.act.label;
+    recordDecision(cid, node.act.label);   // completa la acción en el historial de por vida + sincroniza
 
     // la mano del lado del elemento hace el gesto de agarrar
     const hand = this.hands.find((h) => (node.x >= GAME.width / 2 ? h.side === 'right' : h.side === 'left'));

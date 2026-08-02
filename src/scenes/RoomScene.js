@@ -1,9 +1,10 @@
 import { COLORS, EMOTIONS, CONTENT, CHAR, BG, SCREEN, SCREENS, LEVER, PROMPT, CUPULA, TEXT, FLOOR_F, EMO_NEAR, GAME, FONT } from '../config.js';
 import { emoKey } from './BootScene.js';
-import { buildTopBar, fitTextInBox, openSettings } from '../ui/hud.js';
+import { buildTopBar, fitTextInBox, openSettings, openModal, UI_ACCENT_HEX } from '../ui/hud.js';
 import TouchControls, { hasTouch } from '../ui/touch.js';
 import { buildEyes } from '../ui/eyes.js';
 import { playSfx, footsteps, duckMusic } from '../audio.js';
+import { recordEmotion } from '../db.js';
 
 const STATE = { IDLE: 'idle', PLAYING: 'playing', ASKING: 'asking', PICKED: 'picked' };
 const CONTENT_MS = 22000; // tiempo unificado por noticia (cabe el video de ~21s completo)
@@ -55,32 +56,34 @@ export default class RoomScene extends Phaser.Scene {
   // desaparece al primer clic o tecla.
   buildHelp() {
     if (this.playedCount !== 0) return;
-    const { width, height } = GAME;
     const touch = hasTouch();
-    const c = this.add.container(width / 2, height / 2).setDepth(400);
-    const veil = this.add.rectangle(0, 0, width, height, 0x05040a, 0.74).setInteractive();
-    const panel = this.add.rectangle(0, 0, 940, 470, 0x141222, 0.98).setStrokeStyle(4, COLORS.accent, 0.6);
-    const title = this.mkText(0, -178, 'Controles', 54, { fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
-    const objs = [veil, panel, title];
     const lines = touch
       ? [['Palanca (izquierda)', 'Moverse'], ['Botón  ▲', 'Saltar'], ['Botón  ●', 'Actuar']]
       : [['←  →     /     A   D', 'Moverse'], ['↑   /   W   /   Espacio', 'Saltar'], ['Enter', 'Actuar (palanca y emociones)']];
-    lines.forEach((l, i) => {
-      const y = -80 + i * 74;
-      objs.push(this.mkText(-410, y, l[0], 34, { color: '#f4d35e', fontStyle: 'bold' }).setOrigin(0, 0.5));
-      objs.push(this.mkText(70, y, l[1], 30, { color: '#e9edf5' }).setOrigin(0, 0.5));
-    });
-    objs.push(this.mkText(0, 188, touch ? 'Toca para empezar' : 'Haz clic o pulsa una tecla para empezar', 26,
-      { color: '#8a84a8' }).setOrigin(0.5));
-    c.add(objs);
-    this.helpBox = c;
 
+    const modal = openModal(this, { w: 960, h: 520, title: 'Controles', depth: 400 });
+    const parts = [...modal.parts];
+
+    // Tabla tecla → acción, alineada a las dos columnas.
+    let y = modal.contentTop + 24;
+    lines.forEach((l) => {
+      parts.push(this.mkText(modal.cx - 400, y, l[0], 34, { color: UI_ACCENT_HEX, fontStyle: 'bold' })
+        .setOrigin(0, 0.5).setDepth(modal.depth));
+      parts.push(this.mkText(modal.cx + 60, y, l[1], 30, { color: '#e9edf5' })
+        .setOrigin(0, 0.5).setDepth(modal.depth));
+      y += 74;
+    });
+    parts.push(this.mkText(modal.cx, modal.bottom - 46,
+      touch ? 'Toca para empezar' : 'Haz clic o pulsa una tecla para empezar', 26,
+      { color: '#8a84a8' }).setOrigin(0.5).setDepth(modal.depth));
+
+    this.helpParts = parts;
     const dismiss = () => {
-      if (!this.helpBox) return;
-      this.helpBox.destroy();
-      this.helpBox = null;
+      if (!this.helpParts) return;
+      this.helpParts.forEach((o) => o.destroy());
+      this.helpParts = null;
     };
-    veil.on('pointerdown', dismiss);
+    modal.parts[0].on('pointerdown', dismiss);   // parts[0] es el velo interactivo
     this.input.keyboard.once('keydown', dismiss);
   }
 
@@ -640,11 +643,7 @@ export default class RoomScene extends Phaser.Scene {
       t: Date.now(),
     };
     this.session.push(entry);
-    try {
-      const all = JSON.parse(localStorage.getItem('feelgorithm_sesiones') || '[]');
-      all.push(entry);
-      localStorage.setItem('feelgorithm_sesiones', JSON.stringify(all));
-    } catch (e) { /* localStorage no disponible: seguimos igual */ }
+    recordEmotion(entry);   // guarda en el historial de por vida + sincroniza a la nube
     console.log('[Elección]', entry);
   }
 }

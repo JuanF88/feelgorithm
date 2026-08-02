@@ -1,7 +1,7 @@
 // UI compartida entre escenas: texto, botón y tarjetas de retroalimentación.
 // Vive aparte porque el ciclo termina en CorridorScene pero las tarjetas también
 // se usan desde RoomScene; duplicarlas garantizaba que se desincronizaran.
-import { GAME, FONT, COLORS, TEXT, TARJETA, UI } from '../config.js';
+import { GAME, FONT, COLORS, TEXT, TARJETA, UI, EMOTIONS } from '../config.js';
 import { buildMusicButton, playSfx } from '../audio.js';
 
 // Encoge el texto hasta que quepa dentro de la caja (ancho y alto).
@@ -125,6 +125,88 @@ export function mkText(scene, x, y, str, size, extra = {}) {
   return scene.add.text(x, y, str, {
     fontFamily: FONT, fontSize: `${size}px`, color: '#e9edf5', resolution: 2, ...extra,
   });
+}
+
+// ── Estilo de modales, compartido por género, configuración y controles ────────
+// Para que los diálogos se sientan la misma pieza y lleven la firma del juego:
+// panel violeta oscuro con esquinas redondeadas + borde acento AZUL CIBERNÉTICO, y
+// bajo el título una regla con los colores de las emociones (el motivo del logo,
+// donde las letras son las criaturas). El azul es el mismo cian (#5ad1ff) que ya
+// usan los encabezados de las tarjetas finales: refuerza el tema del algoritmo.
+export const UI_ACCENT = 0x5ad1ff;       // azul cibernético de los modales
+export const UI_ACCENT_HEX = '#5ad1ff';
+const MODAL = {
+  panel: 0x17132a,      // violeta oscuro, hermano del fondo del juego (#0e0b16)
+  btn: 0x231d38,        // botón en reposo
+  btnHover: 0x27324a,   // botón resaltado (con tinte azulado)
+  radiusPanel: 28,
+  radiusBtn: 16,
+};
+
+// Dibuja (o redibuja) un rectángulo redondeado centrado en (cx, cy) sobre un Graphics.
+function drawRound(g, cx, cy, w, h, r, fill, fillA, line, lineW, lineA) {
+  g.clear();
+  if (fill != null) { g.fillStyle(fill, fillA); g.fillRoundedRect(cx - w / 2, cy - h / 2, w, h, r); }
+  if (line != null && lineW > 0) { g.lineStyle(lineW, line, lineA); g.strokeRoundedRect(cx - w / 2, cy - h / 2, w, h, r); }
+}
+
+// Velo + panel del modal, con título y regla de emociones. Devuelve las piezas
+// (para poder destruirlas) y las coordenadas útiles para colocar el contenido.
+export function openModal(scene, { w, h, title, subtitle, depth = 300 }) {
+  const { width, height } = GAME;
+  const cx = width / 2, cy = height / 2;
+  const parts = [];
+
+  const veil = scene.add.rectangle(cx, cy, width, height, 0x08060f, 0.82)
+    .setDepth(depth).setInteractive();   // interactivo = traga clics del fondo
+  const shadow = scene.add.graphics().setDepth(depth + 1);
+  drawRound(shadow, cx, cy + 8, w + 26, h + 26, MODAL.radiusPanel + 6, 0x000000, 0.4, null, 0, 0);
+  const panel = scene.add.graphics().setDepth(depth + 2);
+  drawRound(panel, cx, cy, w, h, MODAL.radiusPanel, MODAL.panel, 0.98, UI_ACCENT, 4, 0.75);
+  parts.push(veil, shadow, panel);
+
+  const top = cy - h / 2;
+  const t = mkText(scene, cx, top + 62, title, 46, {
+    fontStyle: 'bold', color: '#ffffff', align: 'center', wordWrap: { width: w * 0.86 },
+  }).setOrigin(0.5).setDepth(depth + 3);
+  parts.push(t);
+
+  // Regla firma: los colores de las emociones en pequeños segmentos redondeados.
+  const rule = scene.add.graphics().setDepth(depth + 3);
+  const cols = EMOTIONS.map((e) => e.color);
+  const segW = 30, segGap = 9, ruleY = t.y + t.height / 2 + 14;
+  const totalW = cols.length * segW + (cols.length - 1) * segGap;
+  let sx = cx - totalW / 2;
+  cols.forEach((col) => { rule.fillStyle(col, 0.95); rule.fillRoundedRect(sx, ruleY, segW, 7, 3); sx += segW + segGap; });
+  parts.push(rule);
+
+  let contentTop = ruleY + 28;
+  if (subtitle) {
+    const s = mkText(scene, cx, contentTop, subtitle, 24, {
+      color: '#a7a2c0', align: 'center', lineSpacing: 6, wordWrap: { width: w * 0.82 },
+    }).setOrigin(0.5, 0).setDepth(depth + 3);
+    parts.push(s);
+    contentTop = s.y + s.height + 26;
+  }
+  return { parts, cx, cy, top, bottom: cy + h / 2, contentTop, depth: depth + 3 };
+}
+
+// Botón estándar de los modales: redondeado, borde acento y hover. Devuelve el contenedor.
+export function menuButton(scene, x, y, w, h, text, onClick, { depth = 303 } = {}) {
+  const c = scene.add.container(x, y).setDepth(depth);
+  const g = scene.add.graphics();
+  const paint = (fill) => drawRound(g, 0, 0, w, h, MODAL.radiusBtn, fill, 1, UI_ACCENT, 2, 0.55);
+  paint(MODAL.btn);
+  const label = mkText(scene, 0, 0, text, TEXT.button, {
+    color: '#f4f2ff', fontStyle: 'bold', align: 'center', wordWrap: { width: w * 0.9 },
+  }).setOrigin(0.5);
+  c.add([g, label]);
+  c.setSize(w, h).setInteractive({ useHandCursor: true });
+  c.on('pointerover', () => paint(MODAL.btnHover));
+  c.on('pointerout', () => paint(MODAL.btn));
+  // pointerup: gesto completado, más fiable en táctil.
+  c.on('pointerup', () => { playSfx(scene, 'ui'); onClick(); });
+  return c;
 }
 
 export function showButton(scene, text, onClick) {
