@@ -27,11 +27,11 @@ export default class TouchControls {
     this.stickThumb = scene.add.circle(this.stickCenter.x, this.stickCenter.y, s.thumb, COLORS.accent, 0.85)
       .setStrokeStyle(3, 0x0a0f1a, 0.5).setDepth(501).setAlpha(TOUCH.alpha).setScrollFactor(0);
 
-    if (action) this.buildButton('action', TOUCH.action, '●', () => {
+    if (action) this.buildButton('action', TOUCH.action, 'dot', () => {
       this.actionFlag = true;
       if (this.onAction) this.onAction();
     });
-    if (jump) this.buildButton('jump', TOUCH.jump, '▲', () => { this.jumpFlag = true; });
+    if (jump) this.buildButton('jump', TOUCH.jump, 'arrow', () => { this.jumpFlag = true; });
 
     // La palanca escucha punteros globales: se agarra desde cualquier punto cercano.
     this.onDown = (p) => {
@@ -57,13 +57,22 @@ export default class TouchControls {
     scene.events.once('shutdown', () => this.destroy());
   }
 
-  // Crea un botón redondo con icono. `name` = 'action' | 'jump'.
-  buildButton(name, cfg, icon, onDown) {
-    const btn = this.scene.add.circle(GAME.width * cfg.xf, GAME.height * cfg.yf, cfg.radius, 0x0a0f1a, 0.45)
+  // Crea un botón redondo. El icono se DIBUJA (no es texto) para que siempre se vea
+  // en cualquier móvil. type = 'dot' (acción) | 'arrow' (saltar, flecha arriba).
+  buildButton(name, cfg, type, onDown) {
+    const cx = GAME.width * cfg.xf;
+    const cy = GAME.height * cfg.yf;
+    const btn = this.scene.add.circle(cx, cy, cfg.radius, 0x0a0f1a, 0.45)
       .setStrokeStyle(5, COLORS.accent, 0.75).setDepth(500).setAlpha(TOUCH.alpha).setScrollFactor(0);
-    const ic = this.scene.add.text(GAME.width * cfg.xf, GAME.height * cfg.yf, icon, {
-      fontFamily: 'system-ui, sans-serif', fontSize: '64px', color: '#f4d35e', resolution: 2,
-    }).setOrigin(0.5).setDepth(501).setAlpha(TOUCH.alpha).setScrollFactor(0);
+    const ic = this.scene.add.graphics().setDepth(501).setScrollFactor(0).setAlpha(TOUCH.alpha);
+    ic.fillStyle(0xf4d35e, 1);
+    const r = cfg.radius * 0.42;
+    if (type === 'arrow') {
+      ic.fillTriangle(cx, cy - r, cx - r, cy + r * 0.35, cx + r, cy + r * 0.35); // punta arriba
+      ic.fillRect(cx - r * 0.3, cy + r * 0.2, r * 0.6, r * 0.55);               // tallo
+    } else {
+      ic.fillCircle(cx, cy, cfg.radius * 0.3);
+    }
     btn.setInteractive({ useHandCursor: true });
     btn.on('pointerdown', () => { onDown(); this.setAlpha(btn, ic, TOUCH.alphaActive); });
     btn.on('pointerup', () => this.setAlpha(btn, ic, TOUCH.alpha));

@@ -1,6 +1,6 @@
 // Service worker básico: cachea el shell para que el juego funcione offline.
 // Sube el número de versión cuando cambies archivos para forzar la actualización.
-const CACHE = "feelgorithm-v49";
+const CACHE = "feelgorithm-v51";
 const ASSETS = [
   ".",
   "index.html",
@@ -55,7 +55,7 @@ const ASSETS = [
   "assets/emotions/surpriseSheet.png",
   "assets/contenido/Contenido 1_Español_Cádena de WhatsAPP.png",
   "assets/contenido/Contenido 2_Español_Vídeo.mp4",
-  "assets/contenido/c3.svg",
+  "assets/contenido/Contenido 3_Español_Titular.png",
   "assets/audio/music.wav",
   "assets/audio/music_scary.wav",
   "assets/audio/footsteps.wav",

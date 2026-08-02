@@ -6,6 +6,13 @@
   <title>Feelgorithm — prototipo</title>
   <meta name="theme-color" content="#12101a" />
   <link rel="manifest" href="manifest.webmanifest" />
+  <!-- iOS: no soporta la API de pantalla completa en Safari; la única forma es
+       instalar la PWA ("Añadir a pantalla de inicio"), que con estas etiquetas
+       arranca en pantalla completa (standalone, sin barras del navegador). -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Feelgorithm" />
   <style>
     html, body { margin: 0; height: 100%; background: #12101a; overflow: hidden; }
     /* `position: fixed` + inset en vez de 100vw/100vh: en móvil, 100vh incluye la

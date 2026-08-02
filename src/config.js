@@ -134,10 +134,11 @@ export const CONTENT = [
   {
     id: "c3",
     key: "cont_c3",
-    file: "assets/contenido/c3.svg",
-    titulo: "Rage-bait de IA (simulado)",
+    file: "assets/contenido/Contenido 3_Español_Titular.png",
+    titulo: "Contenido 3 — Seguridad ciudadana (titular)",
     caso: "3.0",
-    screen: "h",
+    screen: "v",
+    fit: "contain", // cuadrado con texto abajo: no recortar (cabe entero)
   },
 ];
 
@@ -421,8 +422,8 @@ export const TOUCH = {
     deadZone: 0.18,
     runAt: 0.75,
   },
-  action: { xf: 0.87, yf: 0.78, radius: 92 }, // sala: equivale a Enter
-  jump: { xf: 0.87, yf: 0.78, radius: 92 }, // pasillo: saltar (misma posición; nunca coinciden)
+  action: { xf: 0.74, yf: 0.86, radius: 88 }, // equivale a Enter (palanca/emoción)
+  jump: { xf: 0.9, yf: 0.82, radius: 92 }, // saltar (a la derecha, para el pulgar)
   alpha: 0.55, // discretos para no tapar la escena
   alphaActive: 0.9,
 };

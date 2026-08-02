@@ -223,7 +223,7 @@ export default class RoomScene extends Phaser.Scene {
   // Palanca y botón de acción, solo en pantallas táctiles.
   buildTouchControls() {
     if (!hasTouch()) return;
-    this.touch = new TouchControls(this);
+    this.touch = new TouchControls(this, { action: true, jump: true });
   }
 
   // Enter en teclado o el botón de acción en táctil: mismo camino.
@@ -265,7 +265,8 @@ export default class RoomScene extends Phaser.Scene {
     const axis = this.touch ? this.touch.axisX : 0;
     const left = this.cursors.left.isDown || this.keys.A.isDown || axis < 0;
     const right = this.cursors.right.isDown || this.keys.D.isDown || axis > 0;
-    const jump = this.cursors.up.isDown || this.keys.W.isDown || this.keys.SPACE.isDown;
+    const jump = this.cursors.up.isDown || this.keys.W.isDown || this.keys.SPACE.isDown
+      || (this.touch ? this.touch.jumpJustPressed() : false);
     const running = this.cursors.shift.isDown || (this.touch ? this.touch.running : false);
     const onFloor = this.avatar.body.blocked.down || this.avatar.body.touching.down;
     const speed = running ? CHAR.speedRun : CHAR.speedWalk;
@@ -454,7 +455,8 @@ export default class RoomScene extends Phaser.Scene {
       const img = this.add.image(this.contentBg.x, this.contentBg.y, item.key);
       const boxW = this.contentBg.width;
       const boxH = this.contentBg.height;
-      if (this.sc.fit === 'cover') {
+      const fit = item.fit || this.sc.fit;   // el contenido puede forzar 'contain'/'cover'
+      if (fit === 'cover') {
         // Recorta el contenido a la proporción de la ventana (quita márgenes
         // vacíos) y lo escala para LLENARLA: la noticia se ve grande, sin bandas.
         const boxA = boxW / boxH;
