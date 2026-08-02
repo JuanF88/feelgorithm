@@ -48,6 +48,40 @@ export default class RoomScene extends Phaser.Scene {
     this.buildTouchControls();
 
     this.setState(STATE.IDLE);
+    this.buildHelp();   // ayuda de controles (solo la primera vez)
+  }
+
+  // Ayuda con los controles al empezar. Se muestra solo en la primera noticia y
+  // desaparece al primer clic o tecla.
+  buildHelp() {
+    if (this.playedCount !== 0) return;
+    const { width, height } = GAME;
+    const touch = hasTouch();
+    const c = this.add.container(width / 2, height / 2).setDepth(400);
+    const veil = this.add.rectangle(0, 0, width, height, 0x05040a, 0.74).setInteractive();
+    const panel = this.add.rectangle(0, 0, 940, 470, 0x141222, 0.98).setStrokeStyle(4, COLORS.accent, 0.6);
+    const title = this.mkText(0, -178, 'Controles', 54, { fontStyle: 'bold', color: '#ffffff' }).setOrigin(0.5);
+    const objs = [veil, panel, title];
+    const lines = touch
+      ? [['Palanca (izquierda)', 'Moverse'], ['Botón  ▲', 'Saltar'], ['Botón  ●', 'Actuar']]
+      : [['←  →     /     A   D', 'Moverse'], ['↑   /   W   /   Espacio', 'Saltar'], ['Enter', 'Actuar (palanca y emociones)']];
+    lines.forEach((l, i) => {
+      const y = -80 + i * 74;
+      objs.push(this.mkText(-410, y, l[0], 34, { color: '#f4d35e', fontStyle: 'bold' }).setOrigin(0, 0.5));
+      objs.push(this.mkText(70, y, l[1], 30, { color: '#e9edf5' }).setOrigin(0, 0.5));
+    });
+    objs.push(this.mkText(0, 188, touch ? 'Toca para empezar' : 'Haz clic o pulsa una tecla para empezar', 26,
+      { color: '#8a84a8' }).setOrigin(0.5));
+    c.add(objs);
+    this.helpBox = c;
+
+    const dismiss = () => {
+      if (!this.helpBox) return;
+      this.helpBox.destroy();
+      this.helpBox = null;
+    };
+    veil.on('pointerdown', dismiss);
+    this.input.keyboard.once('keydown', dismiss);
   }
 
   mkText(x, y, str, size, extra = {}) {
@@ -395,13 +429,17 @@ export default class RoomScene extends Phaser.Scene {
       const vid = this.add.video(this.contentBg.x, this.contentBg.y, item.key);
       this.screen.addAt(vid, 1);
       vid.setLoop(false);
+      vid.setVisible(false);   // oculto hasta escalarlo (si no, aparece gigante un instante)
       // Encaja el video en el hueco. Las dimensiones reales pueden no estar listas
       // al crearlo, así que reajustamos también al empezar a reproducir.
       const fit = () => {
         const el = vid.video;
         const w = vid.width || (el && el.videoWidth) || 0;
         const h = vid.height || (el && el.videoHeight) || 0;
-        if (w && h) vid.setScale(Math.min(this.contentBg.width / w, this.contentBg.height / h));
+        if (w && h) {
+          vid.setScale(Math.min(this.contentBg.width / w, this.contentBg.height / h));
+          vid.setVisible(true);
+        }
       };
       vid.once('playing', fit);
       vid.play(false);   // el gesto previo (palanca) permite reproducir con audio

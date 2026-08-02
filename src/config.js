@@ -421,7 +421,8 @@ export const TOUCH = {
     deadZone: 0.18,
     runAt: 0.75,
   },
-  action: { xf: 0.87, yf: 0.78, radius: 92 },
+  action: { xf: 0.87, yf: 0.78, radius: 92 }, // sala: equivale a Enter
+  jump: { xf: 0.87, yf: 0.78, radius: 92 }, // pasillo: saltar (misma posición; nunca coinciden)
   alpha: 0.55, // discretos para no tapar la escena
   alphaActive: 0.9,
 };

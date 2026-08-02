@@ -76,7 +76,7 @@ export default class CorridorScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('A,D,W,SPACE');
     buildTopBar(this, { music: 'scary', onSettings: () => openSettings(this) });
-    if (hasTouch()) this.touch = new TouchControls(this);
+    if (hasTouch()) this.touch = new TouchControls(this, { action: false, jump: true });
     this.steps = footsteps(this);
 
     this.events.once('shutdown', () => { this.stopThrowing(); this.stopThoughts(); });
@@ -426,7 +426,7 @@ export default class CorridorScene extends Phaser.Scene {
     const left = this.cursors.left.isDown || this.keys.A.isDown || axis < 0;
     const right = this.cursors.right.isDown || this.keys.D.isDown || axis > 0;
     const jump = this.cursors.up.isDown || this.keys.W.isDown || this.keys.SPACE.isDown
-      || (this.touch ? this.touch.actionJustPressed() : false);
+      || (this.touch ? this.touch.jumpJustPressed() : false);
     const running = this.cursors.shift.isDown || (this.touch ? this.touch.running : false);
     const speed = running ? CHAR.speedRun : CHAR.speedWalk;
     const onFloor = this.avatar.body.blocked.down || this.avatar.body.touching.down;

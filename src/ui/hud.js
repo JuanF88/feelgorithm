@@ -25,8 +25,17 @@ export function fullscreenAvailable(scene) {
 
 export function toggleFullscreen(scene) {
   if (!fullscreenAvailable(scene)) return false;
-  if (scene.scale.isFullscreen) scene.scale.stopFullscreen();
-  else scene.scale.startFullscreen();
+  if (scene.scale.isFullscreen) {
+    scene.scale.stopFullscreen();
+  } else {
+    // La petición debe hacerse dentro del gesto (por eso se llama desde 'pointerup').
+    scene.scale.startFullscreen();
+    // En móvil, intentar bloquear horizontal (puede fallar/ignorarse: no pasa nada).
+    try {
+      const o = window.screen && window.screen.orientation;
+      if (o && o.lock) o.lock('landscape').catch(() => {});
+    } catch (e) { /* orientación no bloqueable: seguimos igual */ }
+  }
   return true;
 }
 

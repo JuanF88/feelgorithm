@@ -16,6 +16,8 @@ const config = {
   scale: {
     mode: Phaser.Scale.FIT,          // se adapta a cualquier pantalla
     autoCenter: Phaser.Scale.CENTER_BOTH,
+    fullscreenTarget: 'game',        // el contenedor va a pantalla completa (más fiable en móvil)
+    expandParent: true,
   },
   physics: {
     default: 'arcade',

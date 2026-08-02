@@ -1,5 +1,6 @@
-// Controles táctiles para celular: una palanca de movimiento y un botón de acción.
-// Solo se crean si el dispositivo tiene pantalla táctil; en escritorio no estorban.
+// Controles táctiles para celular: palanca de movimiento + botones opcionales.
+// Cada escena pide los que necesita: la sala usa ACCIÓN (equivale a Enter), el
+// pasillo usa SALTO. Solo se crean si el dispositivo tiene pantalla táctil.
 import { GAME, COLORS, TOUCH } from '../config.js';
 
 export function hasTouch() {
@@ -7,13 +8,14 @@ export function hasTouch() {
 }
 
 export default class TouchControls {
-  // onAction: se llama en cada toque del botón de acción (equivale a pulsar Enter).
-  constructor(scene, { onAction } = {}) {
+  // opts: { onAction, action=true, jump=false }
+  constructor(scene, { onAction, action = true, jump = false } = {}) {
     this.scene = scene;
     this.onAction = onAction;
     this.axisX = 0;          // -1 .. 1
     this.running = false;    // la palanca al máximo equivale a correr
     this.actionFlag = false; // se consume con actionJustPressed()
+    this.jumpFlag = false;   // se consume con jumpJustPressed()
     this.stickPointer = null;
 
     const { width, height } = GAME;
@@ -25,24 +27,13 @@ export default class TouchControls {
     this.stickThumb = scene.add.circle(this.stickCenter.x, this.stickCenter.y, s.thumb, COLORS.accent, 0.85)
       .setStrokeStyle(3, 0x0a0f1a, 0.5).setDepth(501).setAlpha(TOUCH.alpha).setScrollFactor(0);
 
-    const a = TOUCH.action;
-    this.actionBtn = scene.add.circle(width * a.xf, height * a.yf, a.radius, 0x0a0f1a, 0.45)
-      .setStrokeStyle(5, COLORS.accent, 0.75).setDepth(500).setAlpha(TOUCH.alpha).setScrollFactor(0);
-    this.actionIcon = scene.add.text(width * a.xf, height * a.yf, '●', {
-      fontFamily: 'system-ui, sans-serif', fontSize: '64px', color: '#f4d35e', resolution: 2,
-    }).setOrigin(0.5).setDepth(501).setAlpha(TOUCH.alpha).setScrollFactor(0);
-
-    this.actionBtn.setInteractive({ useHandCursor: true });
-    this.actionBtn.on('pointerdown', () => {
+    if (action) this.buildButton('action', TOUCH.action, '●', () => {
       this.actionFlag = true;
-      this.setAlpha(this.actionBtn, this.actionIcon, TOUCH.alphaActive);
       if (this.onAction) this.onAction();
     });
-    this.actionBtn.on('pointerup', () => this.setAlpha(this.actionBtn, this.actionIcon, TOUCH.alpha));
-    this.actionBtn.on('pointerout', () => this.setAlpha(this.actionBtn, this.actionIcon, TOUCH.alpha));
+    if (jump) this.buildButton('jump', TOUCH.jump, '▲', () => { this.jumpFlag = true; });
 
-    // La palanca escucha punteros globales: se agarra desde cualquier punto cercano,
-    // no hace falta acertarle al círculo exacto (imposible en un celular).
+    // La palanca escucha punteros globales: se agarra desde cualquier punto cercano.
     this.onDown = (p) => {
       if (this.stickPointer !== null) return;
       if (Phaser.Math.Distance.Between(p.x, p.y, this.stickCenter.x, this.stickCenter.y) > s.radius * 1.7) return;
@@ -66,6 +57,21 @@ export default class TouchControls {
     scene.events.once('shutdown', () => this.destroy());
   }
 
+  // Crea un botón redondo con icono. `name` = 'action' | 'jump'.
+  buildButton(name, cfg, icon, onDown) {
+    const btn = this.scene.add.circle(GAME.width * cfg.xf, GAME.height * cfg.yf, cfg.radius, 0x0a0f1a, 0.45)
+      .setStrokeStyle(5, COLORS.accent, 0.75).setDepth(500).setAlpha(TOUCH.alpha).setScrollFactor(0);
+    const ic = this.scene.add.text(GAME.width * cfg.xf, GAME.height * cfg.yf, icon, {
+      fontFamily: 'system-ui, sans-serif', fontSize: '64px', color: '#f4d35e', resolution: 2,
+    }).setOrigin(0.5).setDepth(501).setAlpha(TOUCH.alpha).setScrollFactor(0);
+    btn.setInteractive({ useHandCursor: true });
+    btn.on('pointerdown', () => { onDown(); this.setAlpha(btn, ic, TOUCH.alphaActive); });
+    btn.on('pointerup', () => this.setAlpha(btn, ic, TOUCH.alpha));
+    btn.on('pointerout', () => this.setAlpha(btn, ic, TOUCH.alpha));
+    this[`${name}Btn`] = btn;
+    this[`${name}Icon`] = ic;
+  }
+
   setAlpha(a, b, v) { a.setAlpha(v); b.setAlpha(v); }
 
   moveThumb(p) {
@@ -84,8 +90,18 @@ export default class TouchControls {
     return true;
   }
 
+  jumpJustPressed() {
+    if (!this.jumpFlag) return false;
+    this.jumpFlag = false;
+    return true;
+  }
+
+  objects() {
+    return [this.stickBase, this.stickThumb, this.actionBtn, this.actionIcon, this.jumpBtn, this.jumpIcon];
+  }
+
   setVisible(v) {
-    [this.stickBase, this.stickThumb, this.actionBtn, this.actionIcon].forEach((o) => o?.setVisible(v));
+    this.objects().forEach((o) => o?.setVisible(v));
   }
 
   destroy() {
@@ -94,6 +110,6 @@ export default class TouchControls {
     i.off('pointermove', this.onMove);
     i.off('pointerup', this.onUp);
     i.off('pointerupoutside', this.onUp);
-    [this.stickBase, this.stickThumb, this.actionBtn, this.actionIcon].forEach((o) => o?.destroy());
+    this.objects().forEach((o) => o?.destroy());
   }
 }
