@@ -1,6 +1,7 @@
-import { CHAR, BG, BG2, BG3, SCREEN, LEVER, PROMPT, CUPULA, TARJETA, CONTENT, EMOTIONS, EMO_SPRITE, UI, EYES, HANDS, START_SCENE } from '../config.js';
+import { CHAR, BG, BG2, BG3, SCREEN, SCREEN_V, LEVER, PROMPT, CUPULA, TARJETA, TARJETA_FINAL, ACTIONS, CONTENT, EMOTIONS, EMO_SPRITE, UI, EYES, HANDS, VILLAIN, START_SCENE } from '../config.js';
 
 import { EYES_ANIM } from '../ui/eyes.js';
+import { preloadAudio } from '../audio.js';
 
 // Clave de textura de la criatura de una emoción (solo si tiene arte).
 export const emoKey = (emo) => `emo_${emo.id}`;
@@ -20,6 +21,7 @@ export default class BootScene extends Phaser.Scene {
       frameHeight: EYES.frameHeight,
     });
     this.load.image(SCREEN.key, SCREEN.file);
+    this.load.image(SCREEN_V.key, SCREEN_V.file);
     this.load.spritesheet(LEVER.key, LEVER.file, {
       frameWidth: LEVER.frameWidth,
       frameHeight: LEVER.frameHeight,
@@ -29,13 +31,22 @@ export default class BootScene extends Phaser.Scene {
     this.load.image(UI.play.key, UI.play.file);
     this.load.image(UI.settings.key, UI.settings.file);
     this.load.image(UI.fullscreen.key, UI.fullscreen.file);
+    this.load.image(UI.sound.key, UI.sound.file);
+    this.load.image(UI.portada.key, UI.portada.file);
+    this.load.image(UI.reset.key, UI.reset.file);
     this.load.image(HANDS.left.key, HANDS.left.file);
     this.load.image(HANDS.right.key, HANDS.right.file);
     this.load.image(CUPULA.key, CUPULA.file);
     this.load.image(TARJETA.key, TARJETA.file);
+    this.load.image(TARJETA_FINAL.key, TARJETA_FINAL.file);
+    ACTIONS.forEach((a) => this.load.image(a.key, a.file));
     this.load.spritesheet(CHAR.key, CHAR.sheet, {
       frameWidth: CHAR.frameWidth,
       frameHeight: CHAR.frameHeight,
+    });
+    this.load.spritesheet(VILLAIN.key, VILLAIN.sheet, {
+      frameWidth: VILLAIN.frameWidth,
+      frameHeight: VILLAIN.frameHeight,
     });
 
     // Criaturas-emoción: una hoja por emoción que tenga arte.
@@ -51,9 +62,13 @@ export default class BootScene extends Phaser.Scene {
     CONTENT.forEach((c) => {
       if (!c.file) return;
       if (c.file.endsWith('.svg')) this.load.svg(c.key, c.file, { width: 1000, height: 560 });
+      else if (/\.(mp4|webm)$/i.test(c.file)) this.load.video(c.key, c.file);
       else this.load.image(c.key, c.file);
     });
-    // Pendiente: audio, personajes-emoción, videos (.mp4 vía load.video).
+
+    // Música y efectos (definidos en config.js → AUDIO).
+    preloadAudio(this);
+    // Pendiente: personajes-emoción, videos (.mp4 vía load.video).
   }
 
   create() {
@@ -82,6 +97,17 @@ export default class BootScene extends Phaser.Scene {
       frameRate: LEVER.pull.rate,
       repeat: 0,
     });
+
+    // Villano del pasillo: quieto (bucle) y lanzar (una vez).
+    for (const [key, a] of Object.entries(VILLAIN.anims)) {
+      this.anims.create({
+        key: `villain-${key}`,
+        frames: this.anims.generateFrameNumbers(VILLAIN.key, { frames: a.frames }),
+        frameRate: a.rate,
+        repeat: key === 'idle' ? -1 : 0,
+        yoyo: !!a.yoyo,
+      });
+    }
     // Parpadeo: abre - entrecierra - cierra - entrecierra - abre.
     this.anims.create({
       key: EYES_ANIM,

@@ -2,6 +2,7 @@
 // Vive aparte porque el ciclo termina en CorridorScene pero las tarjetas también
 // se usan desde RoomScene; duplicarlas garantizaba que se desincronizaran.
 import { GAME, FONT, COLORS, TEXT, TARJETA, UI } from '../config.js';
+import { buildMusicButton, playSfx } from '../audio.js';
 
 // Encoge el texto hasta que quepa dentro de la caja (ancho y alto).
 // El banner nuevo tiene un panel interior fijo; sin esto, un texto largo se salía.
@@ -31,7 +32,7 @@ export function toggleFullscreen(scene) {
 
 // Botones de la esquina superior derecha. `onSettings` es opcional: si no se pasa,
 // solo se dibuja el de pantalla completa (el pasillo no tiene menú de ajustes).
-export function buildTopBar(scene, { onSettings } = {}) {
+export function buildTopBar(scene, { onSettings, music = 'main' } = {}) {
   const size = UI.settings.size;
   const { margin, gap } = UI.topRight;
   let x = GAME.width - margin;
@@ -44,7 +45,7 @@ export function buildTopBar(scene, { onSettings } = {}) {
     s.setDisplaySize(size, size).setInteractive({ useHandCursor: true });
     s.on('pointerover', () => s.setScale(s.scaleX * 1.08, s.scaleY * 1.08));
     s.on('pointerout', () => s.setDisplaySize(size, size));
-    s.on('pointerdown', onSettings);
+    s.on('pointerdown', () => { playSfx(scene, 'ui'); onSettings(); });
     made.push(s);
     x -= size + gap;
   }
@@ -59,11 +60,26 @@ export function buildTopBar(scene, { onSettings } = {}) {
   // pointerUP, no pointerdown: los navegadores móviles solo aceptan la petición
   // de pantalla completa desde un gesto completado, y descartan la de pointerdown.
   fs.on('pointerup', () => {
+    playSfx(scene, 'ui');
     if (!toggleFullscreen(scene)) showInstallHint(scene);
   });
   made.push(fs);
+  x -= size + gap;
+
+  // Botón para encender/apagar la música. Va en todas las escenas (aquí se llama),
+  // arranca la música según la preferencia y fija la PISTA de esta escena
+  // ('main' por defecto; el pasillo pasa 'scary').
+  made.push(buildMusicButton(scene, x, y, size, music));
 
   return made;
+}
+
+// Abre el menú de configuración/pausa (compartido por todas las escenas): lanza la
+// escena 'Pause' encima y pausa la actual. Funciona igual en sala, pasillo y manos.
+export function openSettings(scene) {
+  if (scene.scene.isActive('Pause')) return;
+  scene.scene.launch('Pause', { fromKey: scene.scene.key });
+  scene.scene.pause();
 }
 
 // Aviso para iPhone: la única forma de jugar sin las barras del navegador es
@@ -112,7 +128,7 @@ export function showButton(scene, text, onClick) {
   btn.setSize(460, 70).setInteractive({ useHandCursor: true });
   btn.on('pointerover', () => bg.setFillStyle(0xffe08a));
   btn.on('pointerout', () => bg.setFillStyle(COLORS.accent));
-  btn.on('pointerdown', onClick);
+  btn.on('pointerdown', () => { playSfx(scene, 'ui'); onClick(); });
   scene.button = btn;
   return btn;
 }

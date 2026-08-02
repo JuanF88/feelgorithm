@@ -1,11 +1,12 @@
-import { COLORS, EMOTIONS, CONTENT, CHAR, BG, SCREEN, LEVER, PROMPT, CUPULA, TEXT, FLOOR_F, EMO_NEAR, GAME, FONT } from '../config.js';
+import { COLORS, EMOTIONS, CONTENT, CHAR, BG, SCREEN, SCREENS, LEVER, PROMPT, CUPULA, TEXT, FLOOR_F, EMO_NEAR, GAME, FONT } from '../config.js';
 import { emoKey } from './BootScene.js';
-import { buildTopBar, fitTextInBox } from '../ui/hud.js';
+import { buildTopBar, fitTextInBox, openSettings } from '../ui/hud.js';
 import TouchControls, { hasTouch } from '../ui/touch.js';
 import { buildEyes } from '../ui/eyes.js';
+import { playSfx, footsteps, duckMusic } from '../audio.js';
 
 const STATE = { IDLE: 'idle', PLAYING: 'playing', ASKING: 'asking', PICKED: 'picked' };
-const CONTENT_MS = 5000; // duración placeholder; el video real durará ~15s
+const CONTENT_MS = 22000; // tiempo unificado por noticia (cabe el video de ~21s completo)
 
 export default class RoomScene extends Phaser.Scene {
   constructor() {
@@ -16,6 +17,7 @@ export default class RoomScene extends Phaser.Scene {
   // registro acumulado (las escenas de Phaser no conservan estado entre arranques).
   init(data = {}) {
     this.contentIndex = data.contentIndex ?? 0;
+    this.playedCount = data.playedCount ?? 0;
     this.session = data.session ?? [];
   }
 
@@ -31,6 +33,8 @@ export default class RoomScene extends Phaser.Scene {
     this.settingsObjects = [];
     this.floorY = GAME.height * FLOOR_F;
     this.capsuleY = GAME.height * CUPULA.rowYf; // base de las cápsulas, al nivel del personaje
+    this.steps = footsteps(this);   // bucle de pasos (caminar/correr)
+    this.wasAirborne = false;       // para detectar el aterrizaje
 
     this.buildBackground();
     this.buildGround();
@@ -96,21 +100,35 @@ export default class RoomScene extends Phaser.Scene {
 
   buildScreen() {
     const { width } = GAME;
-    const sw = SCREEN.imgW * SCREEN.scale;
-    const sh = SCREEN.imgH * SCREEN.scale;
+    // El marco depende del contenido: 'v' vertical (capturas) o 'h' apaisado.
+    const item = CONTENT[this.contentIndex];
+    const sc = SCREENS[item && item.screen] || SCREEN;
+    this.sc = sc;
+    const sw = sc.imgW * sc.scale;
+    const sh = sc.imgH * sc.scale;
     this.screenDisplayH = sh;
-    // El contenedor se posiciona por su centro; SCREEN.topYf define el borde superior.
-    this.screenRestY = GAME.height * SCREEN.topYf + sh / 2;
-    const hiddenY = -sh / 2 - 40;
+    // El contenedor se posiciona por su centro; sc.topYf define el borde superior.
+    this.screenRestY = GAME.height * sc.topYf + sh / 2;
+    this.screenHiddenY = -sh / 2 - 40;
+    // Zoom: se agranda y se sube para que los cables del panel queden pegados al
+    // borde superior de la pantalla (top de la imagen ≈ y 0, con margen `zoomTop`).
+    this.screenZoom = (GAME.height * (sc.zoomH ?? 0.82)) / sh;
+    this.screenZoomY = (sh * this.screenZoom) / 2 + (sc.zoomTop ?? 0);
 
-    const holeCX = ((SCREEN.hole.x0 + SCREEN.hole.x1) / 2 - 0.5) * sw;
-    const holeCY = ((SCREEN.hole.y0 + SCREEN.hole.y1) / 2 - 0.5) * sh;
-    const holeW = (SCREEN.hole.x1 - SCREEN.hole.x0) * sw;
-    const holeH = (SCREEN.hole.y1 - SCREEN.hole.y0) * sh;
+    const holeCX = ((sc.hole.x0 + sc.hole.x1) / 2 - 0.5) * sw;
+    const holeCY = ((sc.hole.y0 + sc.hole.y1) / 2 - 0.5) * sh;
+    const holeW = (sc.hole.x1 - sc.hole.x0) * sw;
+    const holeH = (sc.hole.y1 - sc.hole.y0) * sh;
     this.holeW = holeW;
 
-    this.screenCable = this.add.rectangle(width / 2, 0, 6, 0, 0x3a3557).setOrigin(0.5, 0).setDepth(9);
-    this.screen = this.add.container(width / 2, hiddenY).setDepth(10);
+    this.screenCable = this.add.rectangle(width / 2, 0, 6, 0, 0x3a3557).setOrigin(0.5, 0).setDepth(159);
+    // Velo que oscurece la sala mientras se ve la noticia (foco en la pantalla).
+    // Va por ENCIMA de la barra de botones (depth 120): así los botones quedan
+    // detrás/atenuados mientras la pantalla (depth 160) queda al frente. Es
+    // interactivo para que no se pueda pulsar nada de atrás durante la noticia.
+    this.dimOverlay = this.add.rectangle(width / 2, GAME.height / 2, width, GAME.height, 0x05040a, 1)
+      .setAlpha(0).setDepth(150);
+    this.screen = this.add.container(width / 2, this.screenHiddenY).setDepth(160);
 
     this.contentBg = this.add.rectangle(holeCX, holeCY, holeW, holeH, 0x0a0910);
     this.screenLabel = this.mkText(holeCX, holeCY, '', TEXT.screen, {
@@ -118,7 +136,7 @@ export default class RoomScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.progress = this.add.rectangle(holeCX - holeW / 2, holeCY + holeH / 2 - 12, 0, 10, COLORS.accent).setOrigin(0, 0.5);
 
-    const frame = this.add.image(0, 0, SCREEN.key).setScale(SCREEN.scale);
+    const frame = this.add.image(0, 0, sc.key).setScale(sc.scale);
     this.screen.add([this.contentBg, this.screenLabel, this.progress, frame]);
   }
 
@@ -154,14 +172,18 @@ export default class RoomScene extends Phaser.Scene {
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('W,A,D,SPACE');
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
-    this.input.keyboard.on('keydown-ESC', () => (this.settingsOpen ? this.closeSettings() : this.openSettings()));
+    this.input.keyboard.on('keydown-ESC', () => openSettings(this));
+    // Al pausar (abrir configuración) no deben quedar pasos sonando.
+    this.events.on('pause', () => this.steps && this.steps.set(null));
+    // Si se sale con un video en curso, restaurar el volumen de la música.
+    this.events.once('shutdown', () => duckMusic(this, false));
   }
 
   // ─────────────────────────────── configuración / menú ───────────────────────────────
 
-  // Ajustes (con su arte) + pantalla completa, arriba a la derecha.
+  // Ajustes + música + pantalla completa, arriba a la derecha.
   buildSettingsButton() {
-    buildTopBar(this, { onSettings: () => this.openSettings() });
+    buildTopBar(this, { onSettings: () => openSettings(this) });
   }
 
   // Palanca y botón de acción, solo en pantallas táctiles.
@@ -174,44 +196,6 @@ export default class RoomScene extends Phaser.Scene {
   actionPressed() {
     return Phaser.Input.Keyboard.JustDown(this.enterKey)
       || (this.touch ? this.touch.actionJustPressed() : false);
-  }
-
-  openSettings() {
-    if (this.settingsOpen) return;
-    this.settingsOpen = true;
-    this.paused = true;
-    this.avatar.setVelocity(0, 0);
-
-    const { width, height } = GAME;
-    const overlay = this.add.rectangle(width / 2, height / 2, width, height, 0x05040a, 0.78)
-      .setDepth(300).setInteractive();
-    const panel = this.add.rectangle(width / 2, height / 2, 760, 420, 0x141222, 0.98)
-      .setStrokeStyle(4, COLORS.accent, 0.6).setDepth(301);
-    const title = this.mkText(width / 2, height / 2 - 130, 'Configuración', 52, { fontStyle: 'bold', color: '#ffffff' })
-      .setOrigin(0.5).setDepth(302);
-    const b1 = this.panelButton(width / 2, height / 2, 'Continuar', () => this.closeSettings());
-    const b2 = this.panelButton(width / 2, height / 2 + 110, 'Volver al menú principal', () => this.scene.start('Menu'));
-
-    this.settingsObjects = [overlay, panel, title, b1, b2];
-  }
-
-  closeSettings() {
-    this.settingsObjects.forEach((o) => o.destroy());
-    this.settingsObjects = [];
-    this.settingsOpen = false;
-    this.paused = false;
-  }
-
-  panelButton(x, y, text, onClick) {
-    const c = this.add.container(x, y).setDepth(302);
-    const bg = this.add.rectangle(0, 0, 560, 82, 0x2b2740).setStrokeStyle(3, COLORS.accent, 0.5);
-    const label = this.mkText(0, 0, text, TEXT.button, { color: '#f4f2ff', fontStyle: 'bold' }).setOrigin(0.5);
-    c.add([bg, label]);
-    c.setSize(560, 82).setInteractive({ useHandCursor: true });
-    c.on('pointerover', () => bg.setFillStyle(0x3a3557));
-    c.on('pointerout', () => bg.setFillStyle(0x2b2740));
-    c.on('pointerdown', onClick);
-    return c;
   }
 
   // ─────────────────────────────── update ───────────────────────────────
@@ -232,10 +216,12 @@ export default class RoomScene extends Phaser.Scene {
       if (this.avatar.x < this.autoTarget) {
         this.avatar.setVelocityX(CHAR.speedRun);
         this.playAnim('run');
+        this.steps.set('run');
       } else {
         this.avatar.setVelocityX(0);
         this.autoWalking = false;
         this.playAnim('idle');
+        this.steps.set(null);
         this.endLevel();
       }
       return;
@@ -254,11 +240,21 @@ export default class RoomScene extends Phaser.Scene {
     else if (right && !left) { this.avatar.setVelocityX(speed); this.avatar.setFlipX(false); }
     else this.avatar.setVelocityX(0);
 
-    if (jump && onFloor) this.avatar.setVelocityY(CHAR.jump);
+    if (jump && onFloor) { this.avatar.setVelocityY(CHAR.jump); playSfx(this, 'jump'); }
 
-    if (!onFloor) this.playAnim('jump');
-    else if (this.avatar.body.velocity.x !== 0) this.playAnim(running ? 'run' : 'walk');
-    else this.playAnim('idle');
+    // Aterrizaje: del aire al piso.
+    if (onFloor && this.wasAirborne) playSfx(this, 'land');
+    this.wasAirborne = !onFloor;
+
+    if (!onFloor) { this.playAnim('jump'); this.steps.set(null); }
+    else if (this.avatar.body.velocity.x !== 0) {
+      const mode = running ? 'run' : 'walk';
+      this.playAnim(mode);
+      this.steps.set(mode);
+    } else {
+      this.playAnim('idle');
+      this.steps.set(null);
+    }
   }
 
   playAnim(key) {
@@ -366,61 +362,120 @@ export default class RoomScene extends Phaser.Scene {
     this.showPrompt('');   // sin instrucción: que el contenido hable solo
     // Se acciona la palanca; la pantalla solo baja cuando la animación termina.
     this.lever.play('lever-pull');
+    playSfx(this, 'lever');
     this.lever.once('animationcomplete-lever-pull', () => {
       this.tweens.add({ targets: this.lever, alpha: 0, duration: 300 }); // la palanca desaparece
       this.descendScreen();
     });
   }
 
+  // La pantalla baja YA con la noticia puesta (se ve mientras desciende).
   descendScreen() {
-    // baja vacía (el contenido se pone al terminar el descenso)
-    if (this.contentImg) { this.contentImg.destroy(); this.contentImg = null; }
-    this.contentBg.setFillStyle(0x0a0910);
-    this.screenLabel.setText('');
+    this.setContent(CONTENT[this.contentIndex]);
+    playSfx(this, 'screen');
+    this.dimOverlay.setInteractive();   // bloquea clics de la barra mientras dura
+    this.tweens.add({ targets: this.dimOverlay, alpha: 0.78, duration: 600 }); // oscurece la sala
     this.tweens.add({
       targets: this.screen,
       y: this.screenRestY,
       duration: 800,
       ease: 'Back.easeOut',
       onUpdate: () => this.updateCable(),
-      onComplete: () => this.playContent(),
+      onComplete: () => this.zoomScreen(),
     });
   }
 
-  playContent() {
-    const item = CONTENT[this.contentIndex];
-
-    // muestra la pieza de contenido dentro del hueco de la pantalla
-    // (para VIDEO real: this.add.video(...) en vez de image, y disparar askEmotion en 'complete')
+  // Coloca la pieza de contenido dentro del hueco de la pantalla.
+  // (Para VIDEO real: this.add.video(...) en vez de image, y disparar en 'complete'.)
+  setContent(item) {
+    if (this.contentImg) { this.contentImg.destroy(); this.contentImg = null; }
+    // VIDEO (.mp4): se reproduce una vez, completo, encajado en la ventana.
+    if (item.file && /\.(mp4|webm)$/i.test(item.file) && this.cache.video.exists(item.key)) {
+      this.contentBg.setFillStyle(0x000000);
+      const vid = this.add.video(this.contentBg.x, this.contentBg.y, item.key);
+      this.screen.addAt(vid, 1);
+      vid.setLoop(false);
+      // Encaja el video en el hueco. Las dimensiones reales pueden no estar listas
+      // al crearlo, así que reajustamos también al empezar a reproducir.
+      const fit = () => {
+        const el = vid.video;
+        const w = vid.width || (el && el.videoWidth) || 0;
+        const h = vid.height || (el && el.videoHeight) || 0;
+        if (w && h) vid.setScale(Math.min(this.contentBg.width / w, this.contentBg.height / h));
+      };
+      vid.once('playing', fit);
+      vid.play(false);   // el gesto previo (palanca) permite reproducir con audio
+      fit();
+      this.time.delayedCall(250, fit);
+      duckMusic(this, true);   // baja la música para oír el video
+      this.contentImg = vid;
+      return;
+    }
     if (item.key && this.textures.exists(item.key)) {
       this.contentBg.setFillStyle(0x05060a);
       const img = this.add.image(this.contentBg.x, this.contentBg.y, item.key);
-      const s = Math.min(this.contentBg.width / img.width, this.contentBg.height / img.height);
-      img.setScale(s);
+      const boxW = this.contentBg.width;
+      const boxH = this.contentBg.height;
+      if (this.sc.fit === 'cover') {
+        // Recorta el contenido a la proporción de la ventana (quita márgenes
+        // vacíos) y lo escala para LLENARLA: la noticia se ve grande, sin bandas.
+        const boxA = boxW / boxH;
+        const iw = img.width;
+        const ih = img.height;
+        let cw = iw;
+        let ch = ih;
+        if (iw / ih > boxA) cw = ih * boxA; else ch = iw / boxA;
+        img.setCrop((iw - cw) / 2, (ih - ch) / 2, cw, ch);
+        img.setScale(boxW / cw);
+      } else {
+        img.setScale(Math.min(boxW / img.width, boxH / img.height));
+      }
       this.screen.addAt(img, 1); // detrás de la barra de progreso y del marco
       this.contentImg = img;
     } else {
       this.contentBg.setFillStyle(0x1a0f1f);
       this.screenLabel.setText(item.titulo || '');
     }
+  }
 
+  // Zoom: la pantalla se agranda y se centra para leer la noticia con claridad.
+  zoomScreen() {
+    this.tweens.add({ targets: this.screenCable, alpha: 0, duration: 200 }); // se "suelta" del techo
+    playSfx(this, 'screen');
+    this.tweens.add({
+      targets: this.screen,
+      scale: this.screenZoom,
+      y: this.screenZoomY,
+      duration: 650,
+      ease: 'Sine.easeInOut',
+      onComplete: () => this.startReading(),
+    });
+  }
+
+  // Tiempo de lectura (barra de progreso); al terminar, la pantalla se retrae.
+  startReading() {
     this.progress.width = 0;
     this.tweens.add({
       targets: this.progress,
       width: this.holeW,
       duration: CONTENT_MS,
       ease: 'Linear',
-      onComplete: () => this.raiseScreen(() => this.askEmotion()), // la pantalla se retrae
+      onComplete: () => this.raiseScreen(() => this.askEmotion()),
     });
   }
 
+  // Se retrae: encoge (deshace el zoom) y sube fuera de cuadro.
   raiseScreen(cb) {
+    playSfx(this, 'screen');
+    duckMusic(this, false);   // restaura el volumen de la música
+    this.dimOverlay.disableInteractive();   // la barra vuelve a ser usable
+    this.tweens.add({ targets: this.dimOverlay, alpha: 0, duration: 500 }); // vuelve la luz
     this.tweens.add({
       targets: this.screen,
-      y: -this.screenDisplayH / 2 - 40,
-      duration: 500,
+      y: this.screenHiddenY,
+      scale: 1,
+      duration: 550,
       ease: 'Back.easeIn',
-      onUpdate: () => this.updateCable(),
       onComplete: cb,
     });
   }
@@ -428,6 +483,7 @@ export default class RoomScene extends Phaser.Scene {
   askEmotion() {
     this.setState(STATE.ASKING);
     this.showPrompt('¿Qué sentiste? Selecciona la emoción correspondiente');
+    playSfx(this, 'emerge');
 
     const spacing = GAME.width / (EMOTIONS.length + 1);
     this.emotionNodes = EMOTIONS.map((emo, i) => {
@@ -471,13 +527,14 @@ export default class RoomScene extends Phaser.Scene {
   onPick(node) {
     if (this.state !== STATE.ASKING) return;
     this.setState(STATE.PICKED);
+    playSfx(this, 'select');
     const emo = node.emo;
     this.pickedEmotion = emo;
     this.selectedNode = node;
     this.nearEmotion = null;
     this.dismissBubble();
 
-    this.logChoice(CONTENT[this.contentIndex].id, emo.id);
+    this.logChoice(CONTENT[this.contentIndex], emo);
 
     // desaparece el resto de las cápsulas
     this.emotionNodes.forEach((nd) => {
@@ -506,6 +563,7 @@ export default class RoomScene extends Phaser.Scene {
     this.scene.start('Corridor', {
       emotion: this.pickedEmotion,
       contentIndex: this.contentIndex,
+      playedCount: this.playedCount,
       session: this.session,
     });
   }
@@ -532,8 +590,15 @@ export default class RoomScene extends Phaser.Scene {
     this.tweens.add({ targets: this.banner, scale: this.bannerScale, duration: 180, ease: 'Back.easeOut' });
   }
 
-  logChoice(contentId, emotionId) {
-    const entry = { contentId, emotionId, t: Date.now() };
+  logChoice(content, emo) {
+    const entry = {
+      contentId: content.id,
+      titulo: content.titulo || content.id,
+      emotionId: emo.id,
+      emotionLabel: emo.label,
+      decision: null,       // lo completa HandsScene al elegir la acción
+      t: Date.now(),
+    };
     this.session.push(entry);
     try {
       const all = JSON.parse(localStorage.getItem('feelgorithm_sesiones') || '[]');

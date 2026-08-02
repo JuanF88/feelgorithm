@@ -6,9 +6,10 @@
 assets/
   bg/          fondos de sala (se escalan para CUBRIR el canvas)
   props/       objetos de la sala: palanca, pantalla, banner, cúpula, tarjeta
-  characters/  spritesheets de personajes
+  characters/  spritesheets de personajes (jugador + villainSheet del pasillo)
   emotions/    criaturas-emoción que flotan dentro de las cápsulas
   contenido/   el corpus sintético que se muestra en la pantalla (c1..c3)
+  audio/       música y efectos de sonido (ver audio/README.md)
   icons/       iconos de la PWA
 ```
 
@@ -22,8 +23,15 @@ arte original para que todos los frames tengan el mismo tamaño y estén alinead
 | Generado | Origen | Grilla | Frame |
 |---|---|---|---|
 | `characters/character2Sheet.png` | `characters/character2.png` | 6×3 (18) | 208×200 |
+| `characters/villainSheet.png` | `_source/villain/villain-raw.png` | 4×2 (8) | 400×357 |
 | `emotions/*Sheet.png` | `emotions/*.png` | 6×2 (12) | 208×208 |
 | `props/palancaAnim.png` | `palanca/Capa 1..4.png` | 4×1 | 264×288 |
+
+El villano (monstruo del pasillo) se recompone con
+`_source/villain/_recomponer_sheet.py`: recorta las 8 poses de la lámina cruda,
+les quita el fondo blanco y las alinea por los pies. Sus frames y su
+comportamiento (posición, cada cuánto lanza rocas, etc.) están en
+`src/config.js → VILLAIN` y `ROCKS`.
 
 Alineación usada: **personaje** = centro del cuerpo + pies sobre una línea base
 común (las partículas de velocidad se ignoran para calcular el centro, si no el
@@ -76,11 +84,16 @@ Estilo recomendado: **siluetas planas, una forma distinta por emoción, paleta f
 > Cuidado: si el arte se genera con IA, decláralo en la propuesta. Un proyecto sobre manipulación
 > con contenido sintético, ilustrado con contenido sintético, es un flanco que un juez abre en dos segundos.
 
-## Sonido
+## Sonido — ✅ integrado (con placeholders)
 
-- [ ] SFX: tirar de la palanca, pantalla bajando, emoción emergiendo, selección, click de botón.
-- [ ] Ambiente: zumbido de "laboratorio vivo".
-- Fuentes libres: freesound.org, opengameart.org.
+El sistema de audio ya está montado: música de fondo con botón para encender/apagar
+(se recuerda la elección) y efectos para pasos, salto, aterrizaje, palanca, pantalla,
+emergencia de emociones, selección y clics. Todo se controla desde `src/config.js →
+AUDIO`, la lógica vive en `src/audio.js` y los archivos en `assets/audio/`
+(ver `assets/audio/README.md`).
+
+Los `.wav` actuales son **placeholders generados** — reemplázalos por los definitivos
+(mismo nombre) cuando los tengas. Fuentes libres: freesound.org, opengameart.org.
 
 ## Contenido (el corpus sintético — lo escribe la comunicadora)
 

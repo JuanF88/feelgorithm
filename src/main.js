@@ -4,6 +4,7 @@ import MenuScene from './scenes/MenuScene.js';
 import RoomScene from './scenes/RoomScene.js';
 import CorridorScene from './scenes/CorridorScene.js';
 import HandsScene from './scenes/HandsScene.js';
+import PauseScene from './scenes/PauseScene.js';
 
 // Phaser se carga como global desde vendor/phaser.min.js (ver index.html).
 const config = {
@@ -20,7 +21,7 @@ const config = {
     default: 'arcade',
     arcade: { gravity: { y: 1400 }, debug: false },
   },
-  scene: [BootScene, MenuScene, RoomScene, CorridorScene, HandsScene],
+  scene: [BootScene, MenuScene, RoomScene, CorridorScene, HandsScene, PauseScene],
 };
 
 // eslint-disable-next-line no-new

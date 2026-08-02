@@ -1,5 +1,6 @@
-import { GAME, FONT, BG, UI } from '../config.js';
+import { GAME, FONT, BG, UI, CONTENT } from '../config.js';
 import { buildTopBar, fullscreenAvailable } from '../ui/hud.js';
+import { playSfx } from '../audio.js';
 
 export default class MenuScene extends Phaser.Scene {
   constructor() {
@@ -15,11 +16,15 @@ export default class MenuScene extends Phaser.Scene {
     bg.setScale(Math.max(width / bg.width, height / bg.height));
     this.add.rectangle(width / 2, height / 2, width, height, 0x0a0812, 0.6).setDepth(-60);
 
+    // Imagen de portada, grande, en la esquina inferior izquierda.
+    const port = this.add.image(0, height, UI.portada.key).setOrigin(0, 1).setDepth(-50);
+    port.setDisplaySize(UI.portada.width, (UI.portada.width * port.height) / port.width);
+
     // Alturas como fracción del alto: subirlas todas por igual mueve el bloque
     // entero sin descuadrar el espaciado entre líneas.
     this.makeTitle(width / 2, height * UI.title.yf);
 
-    this.makePlayButton(width / 2, height * 0.68, () => this.scene.start('Room'));
+    this.makePlayButton(width / 2, height * 0.68, () => this.startGame());
     buildTopBar(this);   // pantalla completa (útil sobre todo en celular)
 
     // Donde no hay API de pantalla completa (iPhone), la única vía real es instalar
@@ -31,7 +36,13 @@ export default class MenuScene extends Phaser.Scene {
     }
 
     // Enter también inicia
-    this.input.keyboard.once('keydown-ENTER', () => this.scene.start('Room'));
+    this.input.keyboard.once('keydown-ENTER', () => this.startGame());
+  }
+
+  // Empieza con una noticia AL AZAR (distinta cada partida).
+  startGame() {
+    const contentIndex = Phaser.Math.Between(0, CONTENT.length - 1);
+    this.scene.start('Room', { contentIndex, playedCount: 0, session: [] });
   }
 
   txt(x, y, str, size, color, extra = {}) {
@@ -69,7 +80,7 @@ export default class MenuScene extends Phaser.Scene {
     btn.setInteractive({ useHandCursor: true });
     btn.on('pointerover', () => this.tweens.add({ targets: btn, scale: scale * 1.06, duration: 120 }));
     btn.on('pointerout', () => this.tweens.add({ targets: btn, scale, duration: 120 }));
-    btn.on('pointerdown', onClick);
+    btn.on('pointerdown', () => { playSfx(this, 'ui'); onClick(); });
     return btn;
   }
 }
