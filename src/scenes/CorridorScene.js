@@ -2,8 +2,8 @@ import { GAME, CHAR, BG2, CORRIDOR, VILLAIN, ROCKS, THOUGHTS, CONTENT, EMO_MATRI
 import { mkText, buildTopBar, fitTextInBox, openSettings } from '../ui/hud.js';
 import TouchControls, { hasTouch } from '../ui/touch.js';
 import { footsteps, playSfx } from '../audio.js';
-import { MATRIZ } from '../data/matriz.js';
 import { speak, stopSpeak } from '../voice.js';
+import { t, getMatriz } from '../i18n.js';
 
 // Escena 2 — el pasillo, nivel de RESISTIR. El personaje sale del túnel izquierdo;
 // al fondo un villano lanza rocas en parábola. Hay que esquivarlas durante un tiempo
@@ -63,7 +63,8 @@ export default class CorridorScene extends Phaser.Scene {
     // Distorsiones para (caso del contenido × emoción elegida).
     const caso = CONTENT[this.contentIndex]?.caso;
     const emoName = EMO_MATRIX[this.emotion?.id] || 'Miedo';
-    const node = MATRIZ[caso] && MATRIZ[caso][emoName];
+    const M = getMatriz();
+    const node = M[caso] && M[caso][emoName];
     // Solo la frase (el pensamiento), sin el nombre de la distorsión ni las «».
     const soloFrase = (t) => {
       const m = t.match(/«([^»]*)»/);
@@ -180,7 +181,7 @@ export default class CorridorScene extends Phaser.Scene {
     this.clearRocks();
     this.stopThoughts();
     this.hideTimer();
-    this.setPrompt('El villano se fue. ¡Corre a la puerta! →');
+    this.setPrompt(t('El villano se fue. ¡Corre a la puerta! →'));
     this.time.delayedCall(2600, () => this.hidePrompt());
     this.villain.play('villain-idle');
     this.tweens.add({
@@ -280,7 +281,7 @@ export default class CorridorScene extends Phaser.Scene {
     const { width, height } = GAME;
     const y = height * 0.12;
     this.timerBox = this.add.container(width / 2, y).setDepth(130);
-    const label = mkText(this, 0, -36, 'Resiste hasta que el villano se vaya', 24, {
+    const label = mkText(this, 0, -36, t('Resiste hasta que el villano se vaya'), 24, {
       color: '#ffd0d0', fontStyle: 'bold', align: 'center',
     }).setOrigin(0.5);
     this.timerNum = mkText(this, 0, 6, `${Math.ceil(CORRIDOR.waitMs / 1000)}`, 60, {
@@ -320,10 +321,10 @@ export default class CorridorScene extends Phaser.Scene {
 
     const { width, height } = GAME;
     this.add.rectangle(width / 2, height / 2, width, height, 0x2a0505, 0.35).setDepth(190);
-    mkText(this, width / 2, height * 0.4, '¡Te alcanzó una roca!', TEXT.prompt, {
+    mkText(this, width / 2, height * 0.4, t('¡Te alcanzó una roca!'), TEXT.prompt, {
       color: '#ff6b6b', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(200);
-    mkText(this, width / 2, height * 0.4 + 62, 'Reintentando…', TEXT.hint, {
+    mkText(this, width / 2, height * 0.4 + 62, t('Reintentando…'), TEXT.hint, {
       color: '#e9edf5',
     }).setOrigin(0.5).setDepth(200);
 
@@ -354,7 +355,7 @@ export default class CorridorScene extends Phaser.Scene {
     this.prompt = mkText(this, this.promptBox.cx, this.promptBox.cy, '', TEXT.prompt, {
       align: 'center', color: PROMPT.color, fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(12);
-    this.setPrompt('Sigue el pasillo… pero algo te espera al fondo');
+    this.setPrompt(t('Sigue el pasillo… pero algo te espera al fondo'));
   }
 
   setPrompt(txt) {
@@ -412,7 +413,7 @@ export default class CorridorScene extends Phaser.Scene {
 
   // Arranca la fase de espera: texto 5 s → temporizador; rocas y pensamientos ya.
   startArena() {
-    this.setPrompt('¡Esquiva las rocas! Aguanta hasta que el villano se vaya');
+    this.setPrompt(t('¡Esquiva las rocas! Aguanta hasta que el villano se vaya'));
     this.startThrowing();
     this.startThoughts();
     this.introTimer = this.time.delayedCall(CORRIDOR.introMs, () => {

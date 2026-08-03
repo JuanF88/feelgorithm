@@ -2,6 +2,7 @@ import { GAME, FONT, BG, UI, CONTENT } from '../config.js';
 import { buildTopBar, fullscreenAvailable, openModal, menuButton } from '../ui/hud.js';
 import { playSfx } from '../audio.js';
 import { hasGender, setGender } from '../db.js';
+import { t } from '../i18n.js';
 
 // Opciones de la pregunta única de género. `id` es lo que se guarda; `label`, lo visible.
 const GENEROS = [
@@ -40,7 +41,7 @@ export default class MenuScene extends Phaser.Scene {
     // la PWA: el manifiesto ya declara `standalone`, así se abre sin barras.
     if (!fullscreenAvailable(this)) {
       this.txt(width / 2, height - 84,
-        'Para pantalla completa: Compartir  →  «Añadir a pantalla de inicio»',
+        t('Para pantalla completa: Compartir  →  «Añadir a pantalla de inicio»'),
         22, '#8a84a8', { align: 'center' }).setOrigin(0.5);
     }
 
@@ -68,15 +69,15 @@ export default class MenuScene extends Phaser.Scene {
     const modal = openModal(this, {
       w: 940,
       h: 300 + GENEROS.length * (bh + gap),
-      title: '¿Con qué género te identificas?',
-      subtitle: 'Solo lo preguntamos una vez, de forma anónima, para entender a quién llega el juego.',
+      title: t('¿Con qué género te identificas?'),
+      subtitle: t('Solo lo preguntamos una vez, de forma anónima, para entender a quién llega el juego.'),
       depth: 400,
     });
 
     const created = [...modal.parts];
     let y = modal.contentTop + bh / 2;
     GENEROS.forEach((g) => {
-      const btn = menuButton(this, modal.cx, y, 640, bh, g.label, () => {
+      const btn = menuButton(this, modal.cx, y, 640, bh, t(g.label), () => {
         created.forEach((o) => o.destroy());
         onPick(g.id);
       }, { depth: modal.depth + 1 });

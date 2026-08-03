@@ -3,6 +3,7 @@
 // se usan desde RoomScene; duplicarlas garantizaba que se desincronizaran.
 import { GAME, FONT, COLORS, TEXT, TARJETA, UI, EMOTIONS } from '../config.js';
 import { buildMusicButton, playSfx } from '../audio.js';
+import { t, getLang, toggleLang } from '../i18n.js';
 
 // Encoge el texto hasta que quepa dentro de la caja (ancho y alto).
 // El banner nuevo tiene un panel interior fijo; sin esto, un texto largo se salía.
@@ -79,8 +80,31 @@ export function buildTopBar(scene, { onSettings, music = 'main' } = {}) {
   // arranca la música según la preferencia y fija la PISTA de esta escena
   // ('main' por defecto; el pasillo pasa 'scary').
   made.push(buildMusicButton(scene, x, y, size, music));
+  x -= size + gap + 24;   // el toggle de idioma es más ancho (píldora)
+
+  // Botón de idioma ES/EN. Al cambiar, reinicia la escena para re-renderizar todo.
+  made.push(buildLangToggle(scene, x, y, size));
 
   return made;
+}
+
+// Píldora ES/EN. Muestra el idioma actual; al tocarla, cambia y reinicia la escena.
+function buildLangToggle(scene, x, y, size) {
+  const w = size * 1.35;
+  const h = size * 0.72;
+  const c = scene.add.container(x, y).setDepth(120);
+  const g = scene.add.graphics();
+  g.fillStyle(0x17132a, 0.9).fillRoundedRect(-w / 2, -h / 2, w, h, 12);
+  g.lineStyle(2, UI_ACCENT, 0.6).strokeRoundedRect(-w / 2, -h / 2, w, h, 12);
+  const label = mkText(scene, 0, 0, getLang().toUpperCase(), 30, {
+    fontStyle: 'bold', color: '#eaf6ff',
+  }).setOrigin(0.5);
+  c.add([g, label]);
+  c.setSize(w, h).setInteractive({ useHandCursor: true });
+  c.on('pointerover', () => label.setColor('#ffffff'));
+  c.on('pointerout', () => label.setColor('#eaf6ff'));
+  c.on('pointerup', () => { playSfx(scene, 'ui'); toggleLang(); scene.scene.restart(); });
+  return c;
 }
 
 // Abre el menú de configuración/pausa (compartido por todas las escenas): lanza la
@@ -101,11 +125,11 @@ export function showInstallHint(scene) {
   const veil = scene.add.rectangle(0, 0, width, height, 0x08070f, 0.72);
   const panel = scene.add.rectangle(0, 0, 1120, 340, 0x171423, 0.98)
     .setStrokeStyle(4, COLORS.accent, 0.85);
-  const title = mkText(scene, 0, -96, 'Pantalla completa', 46, { fontStyle: 'bold' }).setOrigin(0.5);
+  const title = mkText(scene, 0, -96, t('Pantalla completa'), 46, { fontStyle: 'bold' }).setOrigin(0.5);
   const body = mkText(scene, 0, 10,
-    'Este navegador no la permite desde el juego.\nToca  Compartir  y elige «Añadir a pantalla de inicio»:\nasí se abre sin barras.',
+    t('Este navegador no la permite desde el juego.\nToca  Compartir  y elige «Añadir a pantalla de inicio»:\nasí se abre sin barras.'),
     32, { align: 'center', color: '#c9c6da', lineSpacing: 12 }).setOrigin(0.5);
-  const close = mkText(scene, 0, 122, 'Toca para cerrar', 24, { color: '#8a84a8' }).setOrigin(0.5);
+  const close = mkText(scene, 0, 122, t('Toca para cerrar'), 24, { color: '#8a84a8' }).setOrigin(0.5);
   box.add([veil, panel, title, body, close]);
 
   const dismiss = () => {

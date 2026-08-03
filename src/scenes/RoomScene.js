@@ -5,6 +5,7 @@ import TouchControls, { hasTouch } from '../ui/touch.js';
 import { buildEyes } from '../ui/eyes.js';
 import { playSfx, footsteps, duckMusic } from '../audio.js';
 import { recordEmotion } from '../db.js';
+import { t, emoLabel, contentKey, contentFile, contentTitle } from '../i18n.js';
 
 const STATE = { IDLE: 'idle', PLAYING: 'playing', ASKING: 'asking', PICKED: 'picked' };
 const CONTENT_MS = 22000; // tiempo unificado por noticia (cabe el video de ~21s completo)
@@ -61,20 +62,20 @@ export default class RoomScene extends Phaser.Scene {
       ? [['Palanca (izquierda)', 'Moverse'], ['Botón  ▲', 'Saltar'], ['Botón  ●', 'Actuar']]
       : [['←  →     /     A   D', 'Moverse'], ['↑   /   W   /   Espacio', 'Saltar'], ['Enter', 'Actuar (palanca y emociones)']];
 
-    const modal = openModal(this, { w: 960, h: 520, title: 'Controles', depth: 400 });
+    const modal = openModal(this, { w: 960, h: 520, title: t('Controles'), depth: 400 });
     const parts = [...modal.parts];
 
     // Tabla tecla → acción, alineada a las dos columnas.
     let y = modal.contentTop + 24;
     lines.forEach((l) => {
-      parts.push(this.mkText(modal.cx - 400, y, l[0], 34, { color: UI_ACCENT_HEX, fontStyle: 'bold' })
+      parts.push(this.mkText(modal.cx - 400, y, t(l[0]), 34, { color: UI_ACCENT_HEX, fontStyle: 'bold' })
         .setOrigin(0, 0.5).setDepth(modal.depth));
-      parts.push(this.mkText(modal.cx + 60, y, l[1], 30, { color: '#e9edf5' })
+      parts.push(this.mkText(modal.cx + 60, y, t(l[1]), 30, { color: '#e9edf5' })
         .setOrigin(0, 0.5).setDepth(modal.depth));
       y += 74;
     });
     parts.push(this.mkText(modal.cx, modal.bottom - 46,
-      touch ? 'Toca para empezar' : 'Haz clic o pulsa una tecla para empezar', 26,
+      touch ? t('Toca para empezar') : t('Haz clic o pulsa una tecla para empezar'), 26,
       { color: '#8a84a8' }).setOrigin(0.5).setDepth(modal.depth));
 
     this.helpParts = parts;
@@ -303,7 +304,7 @@ export default class RoomScene extends Phaser.Scene {
     const near = this.lever.alpha > 0.5 && Math.abs(this.avatar.x - this.leverX) < LEVER.nearDist;
     if (near !== this.leverNear) { this.leverNear = near; this.glowLever(near); }
     if (near) {
-      this.requestBubble('Activa la palanca');
+      this.requestBubble(t('Activa la palanca'));
       if (this.actionPressed()) this.onLever();
     } else {
       this.dismissBubble();
@@ -323,7 +324,7 @@ export default class RoomScene extends Phaser.Scene {
       if (nearest) this.tweens.add({ targets: nearest, scale: 1.12, duration: 120 });
     }
     if (nearest) {
-      this.requestBubble(`Selecciona ${nearest.emo.label}`, nearest.emo.color);
+      this.requestBubble(`${t('Selecciona')} ${emoLabel(nearest.emo)}`, nearest.emo.color);
       if (this.actionPressed()) this.onPick(nearest);
     } else {
       this.dismissBubble();
@@ -427,35 +428,43 @@ export default class RoomScene extends Phaser.Scene {
   // (Para VIDEO real: this.add.video(...) en vez de image, y disparar en 'complete'.)
   setContent(item) {
     if (this.contentImg) { this.contentImg.destroy(); this.contentImg = null; }
+    // Clave/archivo según idioma (ES o EN); el título también se traduce.
+    const key = contentKey(item);
+    const file = contentFile(item);
     // VIDEO (.mp4): se reproduce una vez, completo, encajado en la ventana.
-    if (item.file && /\.(mp4|webm)$/i.test(item.file) && this.cache.video.exists(item.key)) {
+    if (file && /\.(mp4|webm)$/i.test(file) && this.cache.video.exists(key)) {
       this.contentBg.setFillStyle(0x000000);
-      const vid = this.add.video(this.contentBg.x, this.contentBg.y, item.key);
+      const vid = this.add.video(this.contentBg.x, this.contentBg.y, key);
       this.screen.addAt(vid, 1);
       vid.setLoop(false);
-      vid.setVisible(false);   // oculto hasta escalarlo (si no, aparece gigante un instante)
-      // Encaja el video en el hueco. Las dimensiones reales pueden no estar listas
-      // al crearlo, así que reajustamos también al empezar a reproducir.
+      vid.setVisible(false);   // oculto hasta encajarlo (si no, aparece gigante)
+      const boxW = this.contentBg.width;
+      const boxH = this.contentBg.height;
+      // Encaja usando SOLO las dimensiones reales del elemento <video>
+      // (videoWidth/Height): son las autoritativas. Antes se usaba vid.width, que en
+      // móvil puede devolver el tamaño por defecto del elemento (300x150) antes de
+      // cargar los metadatos → escala equivocada y video ENORME. Mientras no haya
+      // dimensiones reales, se queda oculto (nunca gigante); se corrige al llegar.
       const fit = () => {
         const el = vid.video;
-        const w = vid.width || (el && el.videoWidth) || 0;
-        const h = vid.height || (el && el.videoHeight) || 0;
-        if (w && h) {
-          vid.setScale(Math.min(this.contentBg.width / w, this.contentBg.height / h));
-          vid.setVisible(true);
-        }
+        const w = el ? el.videoWidth : 0;
+        const h = el ? el.videoHeight : 0;
+        if (!w || !h) return;
+        vid.setScale(Math.min(boxW / w, boxH / h));
+        vid.setVisible(true);
       };
-      vid.once('playing', fit);
+      vid.on('playing', fit);
+      vid.on('textureready', fit);
       vid.play(false);   // el gesto previo (palanca) permite reproducir con audio
-      fit();
-      this.time.delayedCall(250, fit);
+      // Reintentos: en móvil los metadatos pueden tardar más que un solo tick.
+      [120, 300, 600, 1000].forEach((ms) => this.time.delayedCall(ms, fit));
       duckMusic(this, true);   // baja la música para oír el video
       this.contentImg = vid;
       return;
     }
-    if (item.key && this.textures.exists(item.key)) {
+    if (key && this.textures.exists(key)) {
       this.contentBg.setFillStyle(0x05060a);
-      const img = this.add.image(this.contentBg.x, this.contentBg.y, item.key);
+      const img = this.add.image(this.contentBg.x, this.contentBg.y, key);
       const boxW = this.contentBg.width;
       const boxH = this.contentBg.height;
       const fit = item.fit || this.sc.fit;   // el contenido puede forzar 'contain'/'cover'
@@ -477,7 +486,7 @@ export default class RoomScene extends Phaser.Scene {
       this.contentImg = img;
     } else {
       this.contentBg.setFillStyle(0x1a0f1f);
-      this.screenLabel.setText(item.titulo || '');
+      this.screenLabel.setText(contentTitle(item) || '');
     }
   }
 
@@ -525,7 +534,7 @@ export default class RoomScene extends Phaser.Scene {
 
   askEmotion() {
     this.setState(STATE.ASKING);
-    this.showPrompt('¿Qué sentiste? Selecciona la emoción correspondiente');
+    this.showPrompt(t('¿Qué sentiste? Selecciona la emoción correspondiente'));
     playSfx(this, 'emerge');
 
     const spacing = GAME.width / (EMOTIONS.length + 1);
@@ -561,9 +570,14 @@ export default class RoomScene extends Phaser.Scene {
     node.emo = emo;
     this.tweens.add({ targets: orb, y: orbY - 16, duration: 1200, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
 
-    const capW = cap.displayWidth;
-    node.setInteractive(new Phaser.Geom.Rectangle(-capW / 2, -capH, capW, capH), Phaser.Geom.Rectangle.Contains);
-    node.on('pointerdown', () => this.onPick(node));
+    // En escritorio se puede hacer clic directo en la cápsula. En TÁCTIL no: al
+    // mover con la palanca se seleccionaban emociones sin querer (el dedo caía sobre
+    // ellas). En móvil se elige acercándose y pulsando el botón de acción.
+    if (!hasTouch()) {
+      const capW = cap.displayWidth;
+      node.setInteractive(new Phaser.Geom.Rectangle(-capW / 2, -capH, capW, capH), Phaser.Geom.Rectangle.Contains);
+      node.on('pointerdown', () => this.onPick(node));
+    }
     return node;
   }
 

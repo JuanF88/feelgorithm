@@ -1,8 +1,8 @@
 import { GAME, BG3, HANDS, ORBIT, ACTIONS, TARJETA_FINAL, CONTENT, EMO_MATRIX, TEXT, FONT, UI, COLORS } from '../config.js';
 import { mkText, buildTopBar, openSettings, fitTextInBox } from '../ui/hud.js';
 import { playSfx } from '../audio.js';
-import { MATRIZ } from '../data/matriz.js';
 import { recordDecision } from '../db.js';
+import { t, emoLabel, getMatriz } from '../i18n.js';
 
 // Escena 3 — la decisión digital. Las manos del algoritmo intentan agarrar lo que
 // miras; los elementos que giran en círculo son las ACCIONES (me gusta, comentar,
@@ -33,7 +33,7 @@ export default class HandsScene extends Phaser.Scene {
     this.buildOrbit();
     this.buildHands();
 
-    this.prompt = mkText(this, width / 2, height * 0.1, '¿Qué haces con este contenido?', TEXT.prompt, {
+    this.prompt = mkText(this, width / 2, height * 0.1, t('¿Qué haces con este contenido?'), TEXT.prompt, {
       align: 'center', color: '#f4f2ff', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(50);
     this.prompt.setShadow(0, 3, '#000000', 8, false, true);
@@ -52,7 +52,7 @@ export default class HandsScene extends Phaser.Scene {
       const node = this.add.container(0, 0).setDepth(10);
       const img = this.add.image(0, 0, act.key);
       img.setScale((ORBIT.itemR * 2.1) / img.height);
-      const label = this.add.text(0, ORBIT.itemR * 1.25, act.label, {
+      const label = this.add.text(0, ORBIT.itemR * 1.25, t(act.label), {
         fontFamily: FONT, fontSize: '30px', color: '#eaf6ff', fontStyle: 'bold', resolution: 2,
       }).setOrigin(0.5);
       label.setShadow(0, 2, '#000000', 6, false, true);
@@ -193,9 +193,9 @@ export default class HandsScene extends Phaser.Scene {
     this.endObjects = [overlay, card];
 
     const sections = [
-      ['Consecuencia de tu decisión', consecuencia],
-      ['Ejercicio de regulación', ejercicio],
-      ['Consejo de alfabetización mediática', consejo],
+      [t('Consecuencia de tu decisión'), consecuencia],
+      [t('Ejercicio de regulación'), ejercicio],
+      [t('Consejo de alfabetización mediática'), consejo],
     ];
     const wrap = holeW * 0.94;
     const secH = holeH / sections.length;
@@ -231,12 +231,12 @@ export default class HandsScene extends Phaser.Scene {
     const emoHex = '#' + (this.emotion.color ?? 0xffffff).toString(16).padStart(6, '0');
     const lx = width * 0.15;
     this.endObjects.push(
-      mkText(this, lx, height * 0.33, 'SENTISTE', 26, { color: '#c9c6da', fontStyle: 'bold' }).setOrigin(0.5).setDepth(142),
-      mkText(this, lx, height * 0.40, this.emotion.label || '—', 48, {
+      mkText(this, lx, height * 0.33, t('SENTISTE'), 26, { color: '#c9c6da', fontStyle: 'bold' }).setOrigin(0.5).setDepth(142),
+      mkText(this, lx, height * 0.40, this.emotion.label ? emoLabel(this.emotion) : '—', 48, {
         color: emoHex, fontStyle: 'bold', align: 'center', wordWrap: { width: width * 0.26 },
       }).setOrigin(0.5).setDepth(142),
-      mkText(this, lx, height * 0.55, 'HICISTE', 26, { color: '#c9c6da', fontStyle: 'bold' }).setOrigin(0.5).setDepth(142),
-      mkText(this, lx, height * 0.62, this.decisionLabel || '—', 42, {
+      mkText(this, lx, height * 0.55, t('HICISTE'), 26, { color: '#c9c6da', fontStyle: 'bold' }).setOrigin(0.5).setDepth(142),
+      mkText(this, lx, height * 0.62, this.decisionLabel ? t(this.decisionLabel) : '—', 42, {
         color: '#7fd4ff', fontStyle: 'bold', align: 'center', wordWrap: { width: width * 0.26 },
       }).setOrigin(0.5).setDepth(142),
     );
@@ -244,13 +244,15 @@ export default class HandsScene extends Phaser.Scene {
     // ── Botón a la DERECHA ──
     const size = UI.reset.size;
     const rx = width * 0.85;
-    const btn = this.add.image(rx, height * 0.5, UI.reset.key).setDepth(142);
+    // La flecha del arte apunta a la izquierda; se voltea para que apunte a la
+    // DERECHA (sentido de avanzar al siguiente contenido).
+    const btn = this.add.image(rx, height * 0.5, UI.reset.key).setDepth(142).setFlipX(true);
     btn.setDisplaySize(size, size).setInteractive({ useHandCursor: true });
     btn.on('pointerover', () => btn.setDisplaySize(size * 1.08, size * 1.08));
     btn.on('pointerout', () => btn.setDisplaySize(size, size));
     btn.on('pointerdown', () => { playSfx(this, 'ui'); onNext(); });
     const hint = mkText(this, rx, height * 0.5 + size * 0.5 + 8,
-      last ? 'Terminar' : 'Siguiente', 24, { color: '#eaf6ff', fontStyle: 'bold' })
+      last ? t('Terminar') : t('Siguiente'), 24, { color: '#eaf6ff', fontStyle: 'bold' })
       .setOrigin(0.5, 0).setDepth(142);
     this.endObjects.push(btn, hint);
   }
@@ -258,7 +260,8 @@ export default class HandsScene extends Phaser.Scene {
   matrixNode() {
     const caso = CONTENT[this.contentIndex]?.caso;
     const emoName = EMO_MATRIX[this.emotion?.id] || 'Miedo';
-    return (MATRIZ[caso] && MATRIZ[caso][emoName]) || { decisiones: {}, ejercicio: '', consejo: '' };
+    const M = getMatriz();
+    return (M[caso] && M[caso][emoName]) || { decisiones: {}, ejercicio: '', consejo: '' };
   }
 
   // ─────────────────────────────── resumen final ───────────────────────────────
@@ -267,10 +270,10 @@ export default class HandsScene extends Phaser.Scene {
   showSummary() {
     const { width, height } = GAME;
     this.add.rectangle(width / 2, height / 2, width, height, 0x05040a, 0.94).setDepth(200);
-    mkText(this, width / 2, height * 0.11, 'Fin — tus decisiones', 56, {
+    mkText(this, width / 2, height * 0.11, t('Fin — tus decisiones'), 56, {
       color: '#f4d35e', fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(201);
-    mkText(this, width / 2, height * 0.18, 'Así reaccionaste ante cada contenido:', 28, {
+    mkText(this, width / 2, height * 0.18, t('Así reaccionaste ante cada contenido:'), 28, {
       color: '#c9c6da',
     }).setOrigin(0.5).setDepth(201);
 
@@ -286,11 +289,11 @@ export default class HandsScene extends Phaser.Scene {
       const y = top + i * rowH + rowH / 2;
       this.add.rectangle(width / 2, y, panelW, rowH * 0.84, 0x141222, 0.92)
         .setStrokeStyle(2, COLORS.accent, 0.4).setDepth(201);
-      mkText(this, leftX, y - rowH * 0.22, `${i + 1}.  ${e.titulo || e.contentId}`, 26, {
+      mkText(this, leftX, y - rowH * 0.22, `${i + 1}.  ${e.titulo ? t(e.titulo) : e.contentId}`, 26, {
         fontStyle: 'bold', color: '#ffffff', wordWrap: { width: panelW - 72 },
       }).setOrigin(0, 0.5).setDepth(202);
       mkText(this, leftX, y + rowH * 0.16,
-        `Sentiste: ${e.emotionLabel || '—'}      ·      Hiciste: ${e.decision || '—'}`, 24, {
+        `${t('Sentiste:')} ${e.emotionLabel ? t(e.emotionLabel) : '—'}      ·      ${t('Hiciste:')} ${e.decision ? t(e.decision) : '—'}`, 24, {
           color: '#7fd4ff',
         }).setOrigin(0, 0.5).setDepth(202);
     });
@@ -302,7 +305,7 @@ export default class HandsScene extends Phaser.Scene {
     btn.on('pointerover', () => btn.setDisplaySize(size * 1.08, size * 1.08));
     btn.on('pointerout', () => btn.setDisplaySize(size, size));
     btn.on('pointerdown', () => { playSfx(this, 'ui'); this.scene.start('Menu'); });
-    mkText(this, width / 2, height - 82 + size * 0.5 + 4, 'Volver al menú', 22, {
+    mkText(this, width / 2, height - 82 + size * 0.5 + 4, t('Volver al menú'), 22, {
       color: '#eaf6ff', fontStyle: 'bold',
     }).setOrigin(0.5, 0).setDepth(202);
   }

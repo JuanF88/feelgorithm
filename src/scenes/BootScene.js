@@ -59,11 +59,16 @@ export default class BootScene extends Phaser.Scene {
     });
 
     // Contenido del corpus. SVG vía load.svg; para imágenes/videos reales, load.image/load.video.
+    // Se cargan ES e EN (si existe): así cambiar de idioma no re-descarga nada.
+    const loadContent = (key, file) => {
+      if (!key || !file) return;
+      if (file.endsWith('.svg')) this.load.svg(key, file, { width: 1000, height: 560 });
+      else if (/\.(mp4|webm)$/i.test(file)) this.load.video(key, file);
+      else this.load.image(key, file);
+    };
     CONTENT.forEach((c) => {
-      if (!c.file) return;
-      if (c.file.endsWith('.svg')) this.load.svg(c.key, c.file, { width: 1000, height: 560 });
-      else if (/\.(mp4|webm)$/i.test(c.file)) this.load.video(c.key, c.file);
-      else this.load.image(c.key, c.file);
+      loadContent(c.key, c.file);
+      loadContent(c.key_en, c.file_en);
     });
 
     // Música y efectos (definidos en config.js → AUDIO).

@@ -1,6 +1,6 @@
 // Service worker básico: cachea el shell para que el juego funcione offline.
 // Sube el número de versión cuando cambies archivos para forzar la actualización.
-const CACHE = "feelgorithm-v56";
+const CACHE = "feelgorithm-v59";
 const ASSETS = [
   ".",
   "index.html",
@@ -9,6 +9,8 @@ const ASSETS = [
   "src/main.js",
   "src/config.js",
   "src/db.js",
+  "src/i18n.js",
+  "src/data/matriz.en.js",
   "src/scenes/BootScene.js",
   "src/scenes/MenuScene.js",
   "src/scenes/RoomScene.js",
@@ -45,10 +47,10 @@ const ASSETS = [
   "assets/props/portada.png",
   "assets/props/resteButtonTrim.png",
   "assets/actions/like.png",
-  "assets/actions/comentar.png",
-  "assets/actions/compartir.png",
-  "assets/actions/denunciar.png",
-  "assets/actions/ignorar.png",
+  "assets/actions/Comentar.png",
+  "assets/actions/Compartir.png",
+  "assets/actions/Denunciar.png",
+  "assets/actions/Ignorar.png",
   "assets/emotions/angerSheet.png",
   "assets/emotions/fearSheet.png",
   "assets/emotions/happinessSheet.png",
@@ -57,6 +59,11 @@ const ASSETS = [
   "assets/contenido/Contenido 1_Español_Cádena de WhatsAPP.png",
   "assets/contenido/Contenido 2_Español_Vídeo.mp4",
   "assets/contenido/Contenido 3_Español_Titular.png",
+  "assets/contenido/Contenido 4_ Español_Nota de Voz.mp4",
+  "assets/contenido/english/Contenido 1_English_Cádena de WhatsAPP - copia.png",
+  "assets/contenido/english/Contenido 2_English_Vídeo.mp4",
+  "assets/contenido/english/Contenido 3_English_Titular.png",
+  "assets/contenido/english/Contenido 4_ English_Nota de voz.mp4",
   "assets/audio/music.wav",
   "assets/audio/music_scary.wav",
   "assets/audio/footsteps.wav",

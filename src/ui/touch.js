@@ -12,6 +12,11 @@ export default class TouchControls {
   constructor(scene, { onAction, action = true, jump = false } = {}) {
     this.scene = scene;
     this.onAction = onAction;
+
+    // MULTITOUCH: por defecto Phaser rastrea un solo toque, así que sostener la
+    // palanca (un dedo) bloqueaba el pointerdown del botón de saltar/acción (otro
+    // dedo). Con esto se pueden usar palanca + botón a la vez (mover y saltar).
+    scene.input.addPointer(2);
     this.axisX = 0;          // -1 .. 1
     this.running = false;    // la palanca al máximo equivale a correr
     this.actionFlag = false; // se consume con actionJustPressed()

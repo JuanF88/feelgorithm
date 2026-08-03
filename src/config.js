@@ -119,6 +119,8 @@ export const CONTENT = [
     id: "c1",
     key: "cont_c1",
     file: "assets/contenido/Contenido 1_Español_Cádena de WhatsAPP.png",
+    key_en: "cont_c1_en",
+    file_en: "assets/contenido/english/Contenido 1_English_Cádena de WhatsAPP - copia.png",
     titulo: "Contenido 1_Español_Cádena de WhatsAPP",
     caso: "1.0",
     screen: "v",
@@ -127,6 +129,8 @@ export const CONTENT = [
     id: "c2",
     key: "cont_c2",
     file: "assets/contenido/Contenido 2_Español_Vídeo.mp4",
+    key_en: "cont_c2_en",
+    file_en: "assets/contenido/english/Contenido 2_English_Vídeo.mp4",
     titulo: "Contenido 2 — Reel de roles de género",
     caso: "2.0",
     screen: "v", // reel vertical 9:16
@@ -135,10 +139,22 @@ export const CONTENT = [
     id: "c3",
     key: "cont_c3",
     file: "assets/contenido/Contenido 3_Español_Titular.png",
+    key_en: "cont_c3_en",
+    file_en: "assets/contenido/english/Contenido 3_English_Titular.png",
     titulo: "Contenido 3 — Seguridad ciudadana (titular)",
     caso: "3.0",
     screen: "v",
     fit: "contain", // cuadrado con texto abajo: no recortar (cabe entero)
+  },
+  {
+    id: "c4",
+    key: "cont_c4",
+    file: "assets/contenido/Contenido 4_ Español_Nota de Voz.mp4",
+    key_en: "cont_c4_en",
+    file_en: "assets/contenido/english/Contenido 4_ English_Nota de voz.mp4",
+    titulo: "Contenido 4 — Salud y acceso a citas médicas (nota de voz)",
+    caso: "4.0",
+    screen: "v", // nota de voz / reel vertical
   },
 ];
 
@@ -472,11 +488,13 @@ export const VOICE = {
 // Nivel 3 (manos): botones de acción. El jugador elige QUÉ hace con el contenido.
 // `decision` = clave en la matriz del Excel (columna "Decisión digital").
 export const ACTIONS = [
+  // OJO: los nombres van EXACTOS (con mayúscula). El servidor distingue mayúsculas
+  // aunque Windows no; con minúscula daban 404 y salía el ícono roto en móvil.
   { key: "actLike", file: "assets/actions/like.png", label: "Me gusta", decision: "Like" },
-  { key: "actComentar", file: "assets/actions/comentar.png", label: "Comentar", decision: "Comentar" },
-  { key: "actCompartir", file: "assets/actions/compartir.png", label: "Compartir", decision: "Compartir" },
-  { key: "actDenunciar", file: "assets/actions/denunciar.png", label: "Denunciar", decision: "Denunciar" },
-  { key: "actIgnorar", file: "assets/actions/ignorar.png", label: "Ignorar", decision: "Ignorar" },
+  { key: "actComentar", file: "assets/actions/Comentar.png", label: "Comentar", decision: "Comentar" },
+  { key: "actCompartir", file: "assets/actions/Compartir.png", label: "Compartir", decision: "Compartir" },
+  { key: "actDenunciar", file: "assets/actions/Denunciar.png", label: "Denunciar", decision: "Denunciar" },
+  { key: "actIgnorar", file: "assets/actions/Ignorar.png", label: "Ignorar", decision: "Ignorar" },
 ];
 
 // Tarjeta final ÚNICA (marco vertical). Muestra 3 textos del Excel según la
