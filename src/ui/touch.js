@@ -104,6 +104,13 @@ export default class TouchControls {
     return true;
   }
 
+  // Descarta toques pendientes (p. ej. al cambiar de fase) para que un toque viejo
+  // no dispare una acción por sí solo en la siguiente fase.
+  resetTransient() {
+    this.actionFlag = false;
+    this.jumpFlag = false;
+  }
+
   jumpJustPressed() {
     if (!this.jumpFlag) return false;
     this.jumpFlag = false;

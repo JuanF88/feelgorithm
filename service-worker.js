@@ -1,6 +1,6 @@
 // Service worker básico: cachea el shell para que el juego funcione offline.
 // Sube el número de versión cuando cambies archivos para forzar la actualización.
-const CACHE = "feelgorithm-v59";
+const CACHE = "feelgorithm-v67";
 const ASSETS = [
   ".",
   "index.html",
@@ -19,6 +19,7 @@ const ASSETS = [
   "src/scenes/PauseScene.js",
   "src/ui/hud.js",
   "src/ui/touch.js",
+  "src/ui/particles.js",
   "src/ui/eyes.js",
   "src/audio.js",
   "src/voice.js",
@@ -26,6 +27,11 @@ const ASSETS = [
   "assets/icons/icon.svg",
   "assets/characters/character2Sheet.png",
   "assets/characters/villainSheet.png",
+  "assets/characters/villainAtackSheet.png",
+  "assets/characters/villains/fearVillainSheet.png",
+  "assets/characters/villains/happinessVillainSheet.png",
+  "assets/characters/villains/sadVillainSheet.png",
+  "assets/characters/villains/surpriseVillainSheet.png",
   "assets/characters/handLeft.png",
   "assets/characters/handRight.png",
   "assets/bg/gameBackground.png",
@@ -74,6 +80,9 @@ const ASSETS = [
   "assets/audio/emerge.wav",
   "assets/audio/select.wav",
   "assets/audio/ui.wav",
+  // Los diseños de "assets/scrolling tunel/" (mensajes del villano) NO se precargan
+  // aquí: son ~71 MB (45 PNG de 2000x2000). Se cargan bajo demanda por nivel y el
+  // handler network-first de abajo los guarda en caché tras verlos una vez online.
 ];
 
 self.addEventListener("install", (e) => {

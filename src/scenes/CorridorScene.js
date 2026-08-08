@@ -1,8 +1,9 @@
-import { GAME, CHAR, BG2, CORRIDOR, VILLAIN, ROCKS, THOUGHTS, CONTENT, EMO_MATRIX, PROMPT, TEXT } from '../config.js';
+import { GAME, CHAR, BG2, CORRIDOR, VILLAIN, VILLAIN_SKINS, ROCKS, PROJECTILE, THOUGHTS, CONTENT, EMO_MATRIX, TUNNEL_EMO, TUNNEL_MSG, PROMPT, TEXT } from '../config.js';
 import { mkText, buildTopBar, fitTextInBox, openSettings } from '../ui/hud.js';
 import TouchControls, { hasTouch } from '../ui/touch.js';
 import { footsteps, playSfx } from '../audio.js';
 import { speak, stopSpeak } from '../voice.js';
+import { addAmbientParticles } from '../ui/particles.js';
 import { t, getMatriz } from '../i18n.js';
 
 // Escena 2 — el pasillo, nivel de RESISTIR. El personaje sale del túnel izquierdo;
@@ -44,6 +45,7 @@ export default class CorridorScene extends Phaser.Scene {
 
     const bg = this.add.image(width / 2, height / 2, BG2.key).setDepth(-100);
     bg.setScale(Math.max(width / bg.width, height / bg.height));
+    addAmbientParticles(this);
 
     this.floorY = height * CORRIDOR.floorYf;
     this.ground = this.add.rectangle(width / 2, this.floorY + 60, width, 120, 0x000000, 0);
@@ -73,6 +75,15 @@ export default class CorridorScene extends Phaser.Scene {
     this.thoughts = ((node && node.distorsiones) || []).map(soloFrase);
     this.thoughtIdx = 0;
 
+    // Mensajes-imagen que saltan de la cabeza del villano (contenidos 1–3).
+    // Si no hay arte para este caso/emoción, se usan los pensamientos de texto.
+    this.tunnelKeys = [];
+    this.tunnelReady = false;
+    this.tunnelMode = false; // true = mensajes-imagen sobre el villano; false = texto sobre el personaje
+    const folderEmo = TUNNEL_EMO[this.emotion?.id];
+    const imgSet = (TUNNEL_MSG[caso] && folderEmo) ? TUNNEL_MSG[caso][folderEmo] : null;
+    if (imgSet && imgSet.length) { this.tunnelMode = true; this.loadTunnelMsgs(caso, folderEmo, imgSet); }
+
     this.buildPrompt();
     this.cursors = this.input.keyboard.createCursorKeys();
     this.keys = this.input.keyboard.addKeys('A,D,W,SPACE');
@@ -87,11 +98,14 @@ export default class CorridorScene extends Phaser.Scene {
   // ─────────────────────────────── villano ───────────────────────────────
 
   buildVillain() {
-    this.villain = this.add.sprite(GAME.width * VILLAIN.xf, this.floorY + (VILLAIN.yOffset || 0), VILLAIN.key, 0)
+    // Variante según la emoción elegida; ira (sin arte) usa la hoja por defecto.
+    const skin = VILLAIN_SKINS[this.emotion?.id];
+    this.villainKey = (skin && this.textures.exists(skin.key)) ? skin.key : VILLAIN.key;
+    this.villain = this.add.sprite(GAME.width * VILLAIN.xf, this.floorY + (VILLAIN.yOffset || 0), this.villainKey, 0)
       .setOrigin(0.5, 1).setDepth(8);
     this.villain.setScale(VILLAIN.height / this.villain.height);
     if (VILLAIN.faceLeft) this.villain.setFlipX(true);
-    this.villain.play('villain-idle');
+    this.villain.play(`${this.villainKey}-idle`);
   }
 
   startThrowing() {
@@ -112,13 +126,13 @@ export default class CorridorScene extends Phaser.Scene {
 
   throwRock() {
     if (this.dead || this.phase !== PHASE.WAIT) return;
-    this.villain.play('villain-throw');
-    this.villain.once('animationcomplete', () => { if (!this.dead) this.villain.play('villain-idle'); });
+    this.villain.play(`${this.villainKey}-throw`);
+    this.villain.once('animationcomplete', () => { if (!this.dead) this.villain.play(`${this.villainKey}-idle`); });
     this.time.delayedCall(VILLAIN.releaseFrameMs, () => this.spawnRock());
     this.scheduleThrow();
   }
 
-  // Roca (círculo) con velocidad calculada para caer en parábola cerca del jugador.
+  // Proyectil (bola de fuego) con velocidad calculada para caer en parábola cerca del jugador.
   spawnRock() {
     if (this.dead || this.phase !== PHASE.WAIT) return;
     const dir = VILLAIN.faceLeft ? -1 : 1;
@@ -133,23 +147,25 @@ export default class CorridorScene extends Phaser.Scene {
     const vy = (targetY - startY - 0.5 * g * T * T) / T;
 
     const r = ROCKS.radius;
-    const c = this.add.container(startX, startY).setDepth(12);
-    const body = this.add.circle(0, 0, r, ROCKS.color).setStrokeStyle(4, ROCKS.stroke);
-    const dot = this.add.circle(r * 0.35, -r * 0.2, r * 0.24, ROCKS.stroke, 0.6);
-    c.add([body, dot]);
+    // Bola de fuego cibernética: sprite animado, anclado por el centro de la bola.
+    const c = this.add.sprite(startX, startY, PROJECTILE.key)
+      .setOrigin(PROJECTILE.originX, PROJECTILE.originY)
+      .setScale(PROJECTILE.scale)
+      .setDepth(12);
+    c.play('villain-atk');
+    // La llama trailea hacia atrás del movimiento (la bola lidera).
+    if (vx > 0) c.setFlipX(true);
     this.rocks.push({ go: c, vx, vy, r });
     playSfx(this, 'lever');
   }
 
   updateRocks(delta) {
     const dt = delta / 1000;
-    const spin = Phaser.Math.DegToRad(ROCKS.spinDeg) * dt;
     for (let i = this.rocks.length - 1; i >= 0; i--) {
       const rk = this.rocks[i];
       rk.vy += ROCKS.gravity * dt;
       rk.go.x += rk.vx * dt;
       rk.go.y += rk.vy * dt;
-      rk.go.rotation += spin * Math.sign(rk.vx || 1);
 
       if (!this.dead && this.hitsPlayer(rk)) { this.die(); return; }
 
@@ -183,7 +199,7 @@ export default class CorridorScene extends Phaser.Scene {
     this.hideTimer();
     this.setPrompt(t('El villano se fue. ¡Corre a la puerta! →'));
     this.time.delayedCall(2600, () => this.hidePrompt());
-    this.villain.play('villain-idle');
+    this.villain.play(`${this.villainKey}-idle`);
     this.tweens.add({
       targets: this.villain,
       x: this.villain.x + 320,
@@ -194,10 +210,24 @@ export default class CorridorScene extends Phaser.Scene {
     });
   }
 
-  // ─────────────────────────────── pensamientos ───────────────────────────────
+  // ─────────────────────────────── pensamientos / mensajes ───────────────────────────────
+
+  // Carga bajo demanda los 3 diseños del (caso × emoción). Son PNG pesados
+  // (2000x2000), por eso no se precargan en Boot ni en el service worker.
+  loadTunnelMsgs(caso, folderEmo, paths) {
+    const keys = paths.map((_, i) => `tun:${caso}:${folderEmo}:${i}`);
+    if (keys.every((k) => this.textures.exists(k))) { this.tunnelKeys = keys; this.tunnelReady = true; return; }
+    paths.forEach((p, i) => { if (!this.textures.exists(keys[i])) this.load.image(keys[i], p); });
+    this.load.once('complete', () => {
+      // solo conserva las que sí cargaron (si alguna ruta fallara, cae a texto)
+      this.tunnelKeys = keys.filter((k) => this.textures.exists(k));
+      this.tunnelReady = true;
+    });
+    this.load.start();
+  }
 
   startThoughts() {
-    if (!this.thoughts.length) return;
+    if (!this.tunnelMode && !this.thoughts.length) return;
     this.showNextThought();
     this.thoughtTimer = this.time.addEvent({
       delay: THOUGHTS.everyMs, loop: true, callback: () => this.showNextThought(),
@@ -214,18 +244,35 @@ export default class CorridorScene extends Phaser.Scene {
   }
 
   showNextThought() {
-    if (this.dead || !this.thoughts.length) return;
+    if (this.dead) return;
+    const useImg = this.tunnelMode;
+    if (useImg && !this.tunnelReady) return;          // aún cargando: el próximo tick lo intentará
+    if (useImg && !this.tunnelKeys.length) return;    // cargó pero sin arte válido
+    if (!useImg && !this.thoughts.length) return;
+
     const prev = this.currentThought;
     if (prev) this.tweens.add({ targets: prev, alpha: 0, duration: 300, onComplete: () => prev.destroy() });
 
-    const txt = this.thoughts[this.thoughtIdx % this.thoughts.length];
-    this.thoughtIdx++;
-    speak(txt);   // voz del pensamiento (TTS)
-    const b = this.buildThought(txt);
+    let b;
+    if (useImg) {
+      b = this.buildTunnelMsg();                      // diseño al azar, salta del villano
+    } else {
+      const txt = this.thoughts[this.thoughtIdx % this.thoughts.length];
+      this.thoughtIdx++;
+      speak(txt);                                     // voz del pensamiento (TTS)
+      b = this.buildThought(txt);
+    }
     this.currentThought = b;
     this.positionThought();
     b.setAlpha(0);
-    this.tweens.add({ targets: b, alpha: 1, duration: 300 });
+    if (useImg) {
+      // Aparece con "salto": sube un poco y hace un pop de escala desde la cabeza.
+      const finalY = b.y;
+      b.setScale(0.7).setY(finalY + THOUGHTS.villainRise);
+      this.tweens.add({ targets: b, alpha: 1, scale: 1, y: finalY, duration: 340, ease: 'Back.easeOut' });
+    } else {
+      this.tweens.add({ targets: b, alpha: 1, duration: 300 });
+    }
     // se va solo un poco antes del siguiente (por si el jugador se queda quieto)
     this.time.delayedCall(THOUGHTS.holdMs, () => {
       if (this.currentThought === b) {
@@ -233,6 +280,17 @@ export default class CorridorScene extends Phaser.Scene {
         this.tweens.add({ targets: b, alpha: 0, duration: 300, onComplete: () => b.destroy() });
       }
     });
+  }
+
+  // Un diseño PNG al azar del set cargado, envuelto en contenedor (para el pop).
+  buildTunnelMsg() {
+    const key = Phaser.Utils.Array.GetRandom(this.tunnelKeys);
+    const img = this.add.image(0, 0, key).setOrigin(0.5);
+    img.setScale(THOUGHTS.imgWidth / img.width);
+    const c = this.add.container(0, 0, [img]).setDepth(95);
+    c.isTunnelMsg = true;
+    c.msgH = img.displayHeight;
+    return c;
   }
 
   buildThought(txt) {
@@ -256,11 +314,19 @@ export default class CorridorScene extends Phaser.Scene {
   }
 
   positionThought() {
-    if (!this.currentThought) return;
-    const headTop = this.avatar.y - this.avatar.displayHeight * 0.5;
-    const halfW = THOUGHTS.width * 0.5 + 40;
-    this.currentThought.x = Phaser.Math.Clamp(this.avatar.x, halfW, GAME.width - halfW);
-    this.currentThought.y = headTop - 24 - this.currentThought.thoughtH / 2;
+    const b = this.currentThought;
+    if (!b) return;
+    if (b.isTunnelMsg) {
+      // Ancla en la cabeza del villano; se posiciona una sola vez (villano quieto).
+      const headTop = this.villain.y - this.villain.displayHeight;
+      b.x = this.villain.x;
+      b.y = headTop - b.msgH * 0.5 + THOUGHTS.villainMsgOverlap;
+    } else {
+      const headTop = this.avatar.y - this.avatar.displayHeight * 0.5;
+      const halfW = THOUGHTS.width * 0.5 + 40;
+      b.x = Phaser.Math.Clamp(this.avatar.x, halfW, GAME.width - halfW);
+      b.y = headTop - 24 - b.thoughtH / 2;
+    }
   }
 
   // ─────────────────────────────── temporizador ───────────────────────────────
@@ -394,7 +460,8 @@ export default class CorridorScene extends Phaser.Scene {
     if (this.phase === PHASE.WAIT) {
       this.handleMove(true);          // confinado al área de esquivar
       this.updateRocks(delta);
-      this.positionThought();
+      // Solo el texto sigue al personaje; el mensaje-imagen queda fijo en el villano.
+      if (this.currentThought && !this.currentThought.isTunnelMsg) this.positionThought();
       return;
     }
 

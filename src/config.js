@@ -29,6 +29,24 @@ export const COLORS = {
 
 export const FONT = 'system-ui, "Segoe UI", sans-serif';
 
+// Partículas de ambiente "cibernéticas": motas azules que flotan despacio DETRÁS
+// del juego, presentes en todas las escenas. Sutiles a propósito (alfa baja,
+// movimiento lento) para dar carácter sin distraer. Se generan en runtime (sin
+// assets, funciona offline). Ajusta aquí la intensidad; `enabled:false` las apaga.
+export const AMBIENT = {
+  enabled: true,
+  depth: -90, // detrás del juego, delante del fondo (-100)
+  frequency: 200, // ms entre motas nuevas (más alto = menos densidad)
+  lifespan: 9000, // ms que vive cada mota
+  alpha: 0.45, // pico de opacidad (hace fade in/out); más bajo = más discreto
+  riseMin: 6, // velocidad de ascenso (px/s) mínima
+  riseMax: 20, // máxima
+  driftX: 8, // vaivén horizontal (± px/s)
+  scaleMin: 0.5,
+  scaleMax: 1.4,
+  tints: [0x5ad1ff, 0x8be9ff, 0x2f7fae], // azul cibernético + cian
+};
+
 // Personaje principal.
 // Hoja recompuesta a partir de character2.png: 18 frames en grilla 6x3
 // (fila 0 = quieto, fila 1 = caminar, fila 2 = correr). Cada frame quedó alineado
@@ -237,16 +255,41 @@ export const VILLAIN = {
   },
 };
 
-// Rocas que lanza el villano. Por ahora son círculos. Vuelan en parábola hacia
-// donde está el jugador; la gravedad las hace caer. Si tocan al jugador, muere.
+// Variantes del villano según la emoción elegida (mismas 8 poses recoloreadas).
+// Las hojas se normalizaron al mismo grid 464x357 que la hoja por defecto, así que
+// comparten frameWidth/frameHeight y las mismas animaciones (idle/throw). La
+// emoción sin variante (ira) usa la hoja por defecto (VILLAIN.key).
+export const VILLAIN_SKINS = {
+  miedo: { key: "villain_miedo", sheet: "assets/characters/villains/fearVillainSheet.png" },
+  alegria: { key: "villain_alegria", sheet: "assets/characters/villains/happinessVillainSheet.png" },
+  tristeza: { key: "villain_tristeza", sheet: "assets/characters/villains/sadVillainSheet.png" },
+  sorpresa: { key: "villain_sorpresa", sheet: "assets/characters/villains/surpriseVillainSheet.png" },
+};
+
+// Proyectil que lanza el villano: bola de fuego cibernética (4 frames).
+// La hoja se genera recortando y realineando assets/characters/villainatack.png
+// por el centro de la bola, para que la llama parpadee sin que la bola salte.
+// El origen (originX/Y) = centro de la bola dentro del frame: es el punto que
+// sigue la parábola y con el que se calcula la colisión.
+export const PROJECTILE = {
+  key: "villainAtk",
+  sheet: "assets/characters/villainAtackSheet.png",
+  frameWidth: 277,
+  frameHeight: 161,
+  frames: 4,
+  rate: 12, // fps del parpadeo/crecimiento de la llama
+  originX: 0.361,
+  originY: 0.621,
+  scale: 0.5, // tamaño en pantalla (bola ≈ 75 px de diámetro)
+};
+
+// Física del proyectil que lanza el villano. Vuela en parábola hacia donde está
+// el jugador; la gravedad lo hace caer. Si toca al jugador, muere.
 export const ROCKS = {
-  radius: 32,
-  color: 0x7a5b43, // marrón roca
-  stroke: 0x3c2c20,
+  radius: 34, // radio de colisión del proyectil (algo menor que la bola visible)
   gravity: 450, // parábola ALTA y flotante (más pronunciada) → fácil de esquivar
   flightMs: 2300, // vuelo lento → da tiempo de sobra a reaccionar
   aimJitter: 120, // variación del punto de caída (px): hace posible esquivar
-  spinDeg: 200, // giro visual por segundo
   hitHalfW: 34, // medio ancho de la hitbox del jugador (justa, no todo el sprite)
 };
 
@@ -256,9 +299,138 @@ export const ROCKS = {
 export const THOUGHTS = {
   everyMs: 4200, // cada cuánto aparece uno nuevo
   holdMs: 3200, // cuánto permanece visible
-  width: 480, // ancho de la burbuja
+  width: 480, // ancho de la burbuja (modo texto, sobre el personaje)
   size: 26, // tamaño de letra
   color: "#e9e4ff",
+  imgWidth: 440, // ancho en pantalla del mensaje-imagen que salta del villano
+  villainMsgOverlap: 40, // px que el mensaje baja sobre la cabeza del villano (para que "salga" de ahí)
+  villainRise: 26, // cuánto sube el mensaje al aparecer (efecto "salta")
+};
+
+// Mensajes que "saltan" de la cabeza del VILLANO en el pasillo: son diseños PNG
+// (assets/scrolling tunel/) elegidos al azar según el contenido y la emoción.
+// TUNNEL_EMO traduce la emoción del juego al nombre de carpeta (ojo: aquí alegría
+// es "Alegría", no "Felicidad" como en EMO_MATRIX). Solo hay arte para los
+// contenidos 1–4; en los demás casos el pasillo cae a los pensamientos de texto.
+// Se cargan bajo demanda en CorridorScene (son 2000x2000, pesados) — no van al
+// precache del service worker; el SW los guarda en caché al vuelo (network-first).
+export const TUNNEL_EMO = {
+  ira: "Enojo",
+  miedo: "Miedo",
+  alegria: "Alegría",
+  tristeza: "Tristeza",
+  sorpresa: "Asco",
+};
+
+export const TUNNEL_MSG = {
+  "1.0": {
+    "Alegría": [
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Alegría/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Alegría/Razonamiento emocional.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Alegría/Sobregeneralización.png",
+    ],
+    "Asco": [
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Asco/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Asco/Rzonamiento emocional.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Asco/Sobregeneralización.png",
+    ],
+    "Enojo": [
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Enojo/Catastrofización.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Enojo/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Enojo/Pensamiento dicotómico.png",
+    ],
+    "Miedo": [
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Miedo/Catastrofización.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Miedo/Lectura de mente.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Miedo/Magnificación.png",
+    ],
+    "Tristeza": [
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Tristeza/Adivinación del futuro.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Tristeza/Descalificar lo positivo.png",
+      "assets/scrolling tunel/Contenido 1/Distorsiones cognitivas/Tristeza/Filtro mental.png",
+    ],
+  },
+  "2.0": {
+    "Alegría": [
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Alegría/Enunciados del debería.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Alegría/Razonamiento emocional.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Alegría/Sobregeneralización.png",
+    ],
+    "Asco": [
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Asco/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Asco/Razonamiento emocional.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Asco/Sobregeneralización.png",
+    ],
+    "Enojo": [
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Enojo/Catastrofización.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Enojo/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Enojo/Lectura de la mente.png",
+    ],
+    "Miedo": [
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Miedo/Adivinación del futuro.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Miedo/Catastrofización.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Miedo/Magnificación.png",
+    ],
+    "Tristeza": [
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Tristeza/Adivinación del futuro.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Tristeza/Descalificar lo positivo.png",
+      "assets/scrolling tunel/Contenido 2/Distorsiones cognitivas/Tristeza/Filtro mental.png",
+    ],
+  },
+  "3.0": {
+    "Alegría": [
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Alegría/Filtro mental.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Alegría/Magnificación.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Alegría/Razonamiento emocional.png",
+    ],
+    "Asco": [
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Asco/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Asco/Razonamiento emocional.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Asco/Sobregeneralización.png",
+    ],
+    "Enojo": [
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Enojo/Catastrofización.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Enojo/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Enojo/Pensamiento dicotómico.png",
+    ],
+    "Miedo": [
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Miedo/Catastrofización.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Miedo/Lectura de mente.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Miedo/Magnificación.png",
+    ],
+    "Tristeza": [
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Tristeza/Adivinación del futuro.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Tristeza/Descalificar lo positivo.png",
+      "assets/scrolling tunel/Contenido 3/Scrolling Tunel/Tristeza/Filtro mental.png",
+    ],
+  },
+  "4.0": {
+    "Alegría": [
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Alegría/Adivinación del futuro.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Alegría/Filtro mental.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Alegría/Razonamiento emocional.png",
+    ],
+    "Asco": [
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Asco/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Asco/Razonamiento emocional.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Asco/Sobregeneralización.png",
+    ],
+    "Enojo": [
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Enojo/Etiquetamiento.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Enojo/Lectura de mente.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Enojo/Pensamiento dicotómico.png",
+    ],
+    "Miedo": [
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Miedo/Adivinación del futuro.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Miedo/catastrofización.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Miedo/Magnificación.png",
+    ],
+    "Tristeza": [
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Tristeza/Descalificar lo positivo.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Tristeza/Filtro mental.png",
+      "assets/scrolling tunel/Contenido 4/Scrolling tunel/Tristeza/Sobregeneralización.png",
+    ],
+  },
 };
 
 // Escena que arranca el juego. 'Menu' es lo normal; ponerla en 'Hands' o 'Corridor'

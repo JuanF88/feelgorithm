@@ -1,5 +1,6 @@
 import { GAME, FONT, BG, UI, CONTENT } from '../config.js';
 import { buildTopBar, fullscreenAvailable, openModal, menuButton } from '../ui/hud.js';
+import { addAmbientParticles } from '../ui/particles.js';
 import { playSfx } from '../audio.js';
 import { hasGender, setGender } from '../db.js';
 import { t } from '../i18n.js';
@@ -25,6 +26,7 @@ export default class MenuScene extends Phaser.Scene {
     const bg = this.add.image(width / 2, height / 2, BG.key).setDepth(-100);
     bg.setScale(Math.max(width / bg.width, height / bg.height));
     this.add.rectangle(width / 2, height / 2, width, height, 0x0a0812, 0.6).setDepth(-60);
+    addAmbientParticles(this, { depth: -55 }); // por encima del velo oscuro del menú
 
     // Imagen de portada, grande, en la esquina inferior izquierda.
     const port = this.add.image(0, height, UI.portada.key).setOrigin(0, 1).setDepth(-50);

@@ -1,4 +1,4 @@
-import { CHAR, BG, BG2, BG3, SCREEN, SCREEN_V, LEVER, PROMPT, CUPULA, TARJETA, TARJETA_FINAL, ACTIONS, CONTENT, EMOTIONS, EMO_SPRITE, UI, EYES, HANDS, VILLAIN, START_SCENE } from '../config.js';
+import { CHAR, BG, BG2, BG3, SCREEN, SCREEN_V, LEVER, PROMPT, CUPULA, TARJETA, TARJETA_FINAL, ACTIONS, CONTENT, EMOTIONS, EMO_SPRITE, UI, EYES, HANDS, VILLAIN, VILLAIN_SKINS, PROJECTILE, START_SCENE } from '../config.js';
 
 import { EYES_ANIM } from '../ui/eyes.js';
 import { preloadAudio } from '../audio.js';
@@ -47,6 +47,17 @@ export default class BootScene extends Phaser.Scene {
     this.load.spritesheet(VILLAIN.key, VILLAIN.sheet, {
       frameWidth: VILLAIN.frameWidth,
       frameHeight: VILLAIN.frameHeight,
+    });
+    this.load.spritesheet(PROJECTILE.key, PROJECTILE.sheet, {
+      frameWidth: PROJECTILE.frameWidth,
+      frameHeight: PROJECTILE.frameHeight,
+    });
+    // Variantes del villano por emoción (mismo grid que la hoja por defecto).
+    Object.values(VILLAIN_SKINS).forEach((skin) => {
+      this.load.spritesheet(skin.key, skin.sheet, {
+        frameWidth: VILLAIN.frameWidth,
+        frameHeight: VILLAIN.frameHeight,
+      });
     });
 
     // Criaturas-emoción: una hoja por emoción que tenga arte.
@@ -103,16 +114,29 @@ export default class BootScene extends Phaser.Scene {
       repeat: 0,
     });
 
-    // Villano del pasillo: quieto (bucle) y lanzar (una vez).
-    for (const [key, a] of Object.entries(VILLAIN.anims)) {
-      this.anims.create({
-        key: `villain-${key}`,
-        frames: this.anims.generateFrameNumbers(VILLAIN.key, { frames: a.frames }),
-        frameRate: a.rate,
-        repeat: key === 'idle' ? -1 : 0,
-        yoyo: !!a.yoyo,
-      });
+    // Villano del pasillo: quieto (bucle) y lanzar (una vez). Mismas animaciones
+    // para la hoja por defecto y para cada variante de emoción (mismo grid).
+    const villainTextures = [VILLAIN.key, ...Object.values(VILLAIN_SKINS).map((s) => s.key)];
+    for (const tex of villainTextures) {
+      for (const [key, a] of Object.entries(VILLAIN.anims)) {
+        this.anims.create({
+          key: `${tex}-${key}`,
+          frames: this.anims.generateFrameNumbers(tex, { frames: a.frames }),
+          frameRate: a.rate,
+          repeat: key === 'idle' ? -1 : 0,
+          yoyo: !!a.yoyo,
+        });
+      }
     }
+    // Proyectil del villano: la llama parpadea/crece (bucle con yoyo).
+    this.anims.create({
+      key: 'villain-atk',
+      frames: this.anims.generateFrameNumbers(PROJECTILE.key, { start: 0, end: PROJECTILE.frames - 1 }),
+      frameRate: PROJECTILE.rate,
+      repeat: -1,
+      yoyo: true,
+    });
+
     // Parpadeo: abre - entrecierra - cierra - entrecierra - abre.
     this.anims.create({
       key: EYES_ANIM,

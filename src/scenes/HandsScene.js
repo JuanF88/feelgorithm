@@ -1,5 +1,6 @@
-import { GAME, BG3, HANDS, ORBIT, ACTIONS, TARJETA_FINAL, CONTENT, EMO_MATRIX, TEXT, FONT, UI, COLORS } from '../config.js';
+import { GAME, BG3, HANDS, ORBIT, ACTIONS, TARJETA_FINAL, CONTENT, EMO_MATRIX, PROMPT, TEXT, FONT, UI, COLORS } from '../config.js';
 import { mkText, buildTopBar, openSettings, fitTextInBox } from '../ui/hud.js';
+import { addAmbientParticles } from '../ui/particles.js';
 import { playSfx } from '../audio.js';
 import { recordDecision } from '../db.js';
 import { t, emoLabel, getMatriz } from '../i18n.js';
@@ -29,14 +30,29 @@ export default class HandsScene extends Phaser.Scene {
 
     const bg = this.add.image(width / 2, height / 2, BG3.key).setDepth(-100);
     bg.setScale(Math.max(width / bg.width, height / bg.height));
+    addAmbientParticles(this);
 
     this.buildOrbit();
     this.buildHands();
 
-    this.prompt = mkText(this, width / 2, height * 0.1, t('¿Qué haces con este contenido?'), TEXT.prompt, {
-      align: 'center', color: '#f4f2ff', fontStyle: 'bold',
+    // Banner detrás del enunciado (igual que en sala/pasillo), pero más chico y en
+    // una capa de fondo (depth 5) para que NUNCA tape las acciones que giran.
+    const b = PROMPT.banner;
+    const bw = 500; // más angosto que el default (820): cabe arriba sin invadir la órbita
+    const cy = height * 0.115;
+    this.promptBanner = this.add.image(width / 2, cy, b.key).setDepth(5);
+    this.promptBanner.setScale(bw / this.promptBanner.width);
+    const dw = this.promptBanner.displayWidth, dh = this.promptBanner.displayHeight;
+    const box = {
+      w: (b.panel.x1 - b.panel.x0) * dw * b.padding,
+      h: (b.panel.y1 - b.panel.y0) * dh * b.padding,
+      cx: width / 2 + ((b.panel.x0 + b.panel.x1) / 2 - 0.5) * dw,
+      cy: cy + ((b.panel.y0 + b.panel.y1) / 2 - 0.5) * dh,
+    };
+    this.prompt = mkText(this, box.cx, box.cy, t('¿Qué haces con este contenido?'), TEXT.prompt, {
+      align: 'center', color: PROMPT.color, fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(50);
-    this.prompt.setShadow(0, 3, '#000000', 8, false, true);
+    fitTextInBox(this.prompt, box.w, box.h, TEXT.prompt);
 
     buildTopBar(this, { onSettings: () => openSettings(this) });
   }
@@ -158,7 +174,7 @@ export default class HandsScene extends Phaser.Scene {
     this.tweens.add({ targets: node, scale: node.scale * 1.3, alpha: 1, duration: 260, yoyo: true });
     this.items.filter((n) => n !== node)
       .forEach((n) => this.tweens.add({ targets: n, alpha: 0, scale: 0.7, duration: 320 }));
-    this.tweens.add({ targets: this.prompt, alpha: 0, duration: 300 });
+    this.tweens.add({ targets: [this.prompt, this.promptBanner], alpha: 0, duration: 300 });
 
     this.time.delayedCall(900, () => this.showCard());
   }

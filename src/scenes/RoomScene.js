@@ -2,13 +2,18 @@ import { COLORS, EMOTIONS, CONTENT, CHAR, BG, SCREEN, SCREENS, LEVER, PROMPT, CU
 import { emoKey } from './BootScene.js';
 import { buildTopBar, fitTextInBox, openSettings, openModal, UI_ACCENT_HEX } from '../ui/hud.js';
 import TouchControls, { hasTouch } from '../ui/touch.js';
+import { addAmbientParticles } from '../ui/particles.js';
 import { buildEyes } from '../ui/eyes.js';
 import { playSfx, footsteps, duckMusic } from '../audio.js';
 import { recordEmotion } from '../db.js';
 import { t, emoLabel, contentKey, contentFile, contentTitle } from '../i18n.js';
 
 const STATE = { IDLE: 'idle', PLAYING: 'playing', ASKING: 'asking', PICKED: 'picked' };
-const CONTENT_MS = 22000; // tiempo unificado por noticia (cabe el video de ~21s completo)
+// Las imágenes se muestran un tiempo fijo; los videos duran lo que dure el video
+// (terminan en su evento 'complete'). El tope es una salvaguarda por si un video
+// no reporta el final (raro en algunos móviles).
+const CONTENT_IMG_MS = 15000; // imágenes: 15 s por defecto
+const CONTENT_VIDEO_MAX_MS = 180000; // tope de seguridad para video
 
 export default class RoomScene extends Phaser.Scene {
   constructor() {
@@ -101,6 +106,7 @@ export default class RoomScene extends Phaser.Scene {
     const bg = this.add.image(width / 2, height / 2, BG.key).setDepth(-100);
     bg.setScale(Math.max(width / bg.width, height / bg.height));
     buildEyes(this);   // los ojos del algoritmo, al fondo del centro
+    addAmbientParticles(this);
   }
 
   // Suelo invisible sobre el que se para el avatar. Va CHAR.floorOffset px por
@@ -303,9 +309,12 @@ export default class RoomScene extends Phaser.Scene {
   updateLeverProximity() {
     const near = this.lever.alpha > 0.5 && Math.abs(this.avatar.x - this.leverX) < LEVER.nearDist;
     if (near !== this.leverNear) { this.leverNear = near; this.glowLever(near); }
+    // Se consume el toque CADA frame: un toque fuera de la zona no queda pendiente
+    // para dispararse solo al acercarse (era el bug de selección al mover en móvil).
+    const pressed = this.actionPressed();
     if (near) {
       this.requestBubble(t('Activa la palanca'));
-      if (this.actionPressed()) this.onLever();
+      if (pressed) this.onLever();
     } else {
       this.dismissBubble();
     }
@@ -323,9 +332,12 @@ export default class RoomScene extends Phaser.Scene {
       this.nearEmotion = nearest;
       if (nearest) this.tweens.add({ targets: nearest, scale: 1.12, duration: 120 });
     }
+    // Se consume el toque CADA frame: solo selecciona si se pulsa el botón ESTANDO
+    // cerca; moverse (o un toque previo) nunca elige por sí solo.
+    const pressed = this.actionPressed();
     if (nearest) {
       this.requestBubble(`${t('Selecciona')} ${emoLabel(nearest.emo)}`, nearest.emo.color);
-      if (this.actionPressed()) this.onPick(nearest);
+      if (pressed) this.onPick(nearest);
     } else {
       this.dismissBubble();
     }
@@ -428,6 +440,7 @@ export default class RoomScene extends Phaser.Scene {
   // (Para VIDEO real: this.add.video(...) en vez de image, y disparar en 'complete'.)
   setContent(item) {
     if (this.contentImg) { this.contentImg.destroy(); this.contentImg = null; }
+    this.contentIsVideo = false;
     // Clave/archivo según idioma (ES o EN); el título también se traduce.
     const key = contentKey(item);
     const file = contentFile(item);
@@ -460,6 +473,7 @@ export default class RoomScene extends Phaser.Scene {
       [120, 300, 600, 1000].forEach((ms) => this.time.delayedCall(ms, fit));
       duckMusic(this, true);   // baja la música para oír el video
       this.contentImg = vid;
+      this.contentIsVideo = true;
       return;
     }
     if (key && this.textures.exists(key)) {
@@ -505,15 +519,49 @@ export default class RoomScene extends Phaser.Scene {
   }
 
   // Tiempo de lectura (barra de progreso); al terminar, la pantalla se retrae.
+  // Imagen → 15 s fijos. Video → dura lo que dure (termina en su 'complete').
   startReading() {
     this.progress.width = 0;
-    this.tweens.add({
-      targets: this.progress,
-      width: this.holeW,
-      duration: CONTENT_MS,
-      ease: 'Linear',
-      onComplete: () => this.raiseScreen(() => this.askEmotion()),
-    });
+    this.readingDone = false;
+    const finish = () => {
+      if (this.readingDone) return;
+      this.readingDone = true;
+      if (this.progressTween) { this.progressTween.stop(); this.progressTween = null; }
+      this.progress.width = this.holeW;
+      this.raiseScreen(() => this.askEmotion());
+    };
+
+    if (this.contentIsVideo && this.contentImg) {
+      const vid = this.contentImg;
+      // Si el video ya terminó (muy corto) antes de llegar aquí, cierra ya.
+      if (vid.video && vid.video.ended) { finish(); return; }
+      // La barra sigue el progreso real del video; termina cuando el video acaba.
+      const startBar = () => {
+        if (this.progressTween || this.readingDone) return true;
+        const dur = vid.getDuration ? vid.getDuration() : 0;
+        if (!dur || dur <= 0) return false;
+        const cur = vid.getCurrentTime ? vid.getCurrentTime() : 0;
+        this.progress.width = this.holeW * Phaser.Math.Clamp(cur / dur, 0, 1);
+        this.progressTween = this.tweens.add({
+          targets: this.progress, width: this.holeW,
+          duration: Math.max(400, Math.round((dur - cur) * 1000)), ease: 'Linear',
+          onComplete: finish,   // respaldo si no llegara el evento 'complete' del video
+        });
+        return true;
+      };
+      if (!startBar()) {
+        // Metadatos aún no listos: reintenta hasta conocer la duración.
+        [200, 500, 1000, 1600].forEach((ms) => this.time.delayedCall(ms, startBar));
+      }
+      vid.once('complete', finish);                              // fin real del video
+      this.time.delayedCall(CONTENT_VIDEO_MAX_MS, finish);        // salvaguarda
+    } else {
+      // Imagen (o respaldo sin arte): 15 s por defecto.
+      this.progressTween = this.tweens.add({
+        targets: this.progress, width: this.holeW,
+        duration: CONTENT_IMG_MS, ease: 'Linear', onComplete: finish,
+      });
+    }
   }
 
   // Se retrae: encoge (deshace el zoom) y sube fuera de cuadro.
@@ -534,6 +582,9 @@ export default class RoomScene extends Phaser.Scene {
 
   askEmotion() {
     this.setState(STATE.ASKING);
+    // Descarta cualquier toque previo (de la palanca/pantalla) para que no elija
+    // una emoción de golpe al empezar esta fase.
+    if (this.touch) this.touch.resetTransient();
     this.showPrompt(t('¿Qué sentiste? Selecciona la emoción correspondiente'));
     playSfx(this, 'emerge');
 
