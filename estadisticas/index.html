@@ -1,0 +1,462 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex" />
+  <title>Feelgorithm — Estadísticas</title>
+  <style>
+    :root {
+      --bg: #070a12; --card: #111a2e; --card2: #0e1526;
+      --line: #1e2c48; --ink: #e9edf5; --muted: #8a94b0; --accent: #5ad1ff;
+      --accent2: #8be9ff; --bad: #e63946;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: system-ui, "Segoe UI", sans-serif; color: var(--ink);
+      background:
+        radial-gradient(1200px 600px at 80% -10%, rgba(90,209,255,0.10), transparent 60%),
+        radial-gradient(900px 500px at 0% 110%, rgba(90,209,255,0.06), transparent 55%),
+        var(--bg);
+      min-height: 100vh; line-height: 1.5;
+    }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 28px 20px 80px; }
+    header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 12px 18px; margin-bottom: 6px; }
+    h1 { font-size: 26px; margin: 0; letter-spacing: 0.3px; }
+    h1 .dot { color: var(--accent); }
+    .sub { color: var(--muted); font-size: 14px; }
+    .toolbar { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+    button {
+      font: inherit; color: var(--ink); background: var(--card); border: 1px solid var(--line);
+      border-radius: 10px; padding: 8px 14px; cursor: pointer; transition: border-color .15s, background .15s;
+    }
+    button:hover { border-color: var(--accent); }
+    button.primary { background: var(--accent); color: #062033; border-color: var(--accent); font-weight: 700; }
+    button:disabled { opacity: .5; cursor: default; }
+    .meta { color: var(--muted); font-size: 12.5px; margin: 4px 0 22px; }
+
+    .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 26px; }
+    .kpi { background: linear-gradient(180deg, var(--card), var(--card2)); border: 1px solid var(--line);
+      border-radius: 14px; padding: 16px 18px; }
+    .kpi .n { font-size: 30px; font-weight: 800; color: var(--accent); line-height: 1.1; }
+    .kpi .l { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 18px; }
+    .card { background: linear-gradient(180deg, var(--card), var(--card2)); border: 1px solid var(--line);
+      border-radius: 16px; padding: 18px 20px; }
+    .card h2 { font-size: 15px; margin: 0 0 4px; letter-spacing: .3px; }
+    .card .hint { color: var(--muted); font-size: 12.5px; margin: 0 0 14px; }
+
+    .bars { display: flex; flex-direction: column; gap: 10px; }
+    .row { display: grid; grid-template-columns: 130px 1fr auto; gap: 10px; align-items: center; }
+    .row .rl { font-size: 13px; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .track { background: rgba(255,255,255,0.05); border-radius: 999px; height: 12px; overflow: hidden; }
+    .fill { height: 100%; border-radius: 999px; min-width: 2px; transition: width .5s ease; }
+    .row .rv { font-size: 12.5px; color: var(--muted); white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .row.country { grid-template-columns: 210px 1fr auto; }
+    .rl.cty { display: flex; align-items: center; gap: 9px; overflow: hidden; }
+    .rl.cty span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    img.flag { width: 28px; height: 21px; border-radius: 3px; object-fit: cover; flex: 0 0 auto;
+      box-shadow: 0 0 0 1px rgba(255,255,255,0.10); background: #0a1120; }
+    .flag-fallback { width: 28px; text-align: center; flex: 0 0 auto; }
+
+    table.matrix { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+    table.matrix th, table.matrix td { padding: 7px 8px; text-align: center; border: 1px solid var(--line); }
+    table.matrix th { color: var(--muted); font-weight: 600; }
+    table.matrix td.lab { text-align: left; color: var(--ink); font-weight: 600; white-space: nowrap; }
+    table.matrix td .pct { font-size: 11px; color: var(--muted); display: block; }
+    .scroll { overflow-x: auto; }
+
+    .full { grid-column: 1 / -1; }
+    .spark { display: flex; align-items: flex-end; gap: 3px; height: 90px; }
+    .spark .b { flex: 1; background: linear-gradient(180deg, var(--accent), rgba(90,209,255,0.25));
+      border-radius: 3px 3px 0 0; min-height: 2px; }
+    .spark-x { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; margin-top: 6px; }
+
+    .state { text-align: center; padding: 60px 20px; color: var(--muted); }
+    .state h2 { color: var(--ink); }
+    .panel-warn { background: rgba(255,209,102,0.08); border: 1px solid rgba(255,209,102,0.3); }
+    pre { background: #060a14; border: 1px solid var(--line); border-radius: 10px; padding: 14px;
+      overflow-x: auto; font-size: 12px; color: #cfe8ff; text-align: left; }
+    a { color: var(--accent); }
+    .legendnote { color: var(--muted); font-size: 12px; margin-top: 10px; }
+    .foot { color: var(--muted); font-size: 12px; margin-top: 34px; text-align: center; }
+
+    /* Login */
+    .login { max-width: 380px; margin: 60px auto; background: linear-gradient(180deg, var(--card), var(--card2));
+      border: 1px solid var(--line); border-radius: 16px; padding: 26px 24px; }
+    .login h2 { margin: 0 0 4px; font-size: 18px; }
+    .login p { color: var(--muted); font-size: 13px; margin: 0 0 18px; }
+    .login label { display: block; font-size: 12.5px; color: var(--muted); margin: 12px 0 5px; }
+    .login input { width: 100%; font: inherit; color: var(--ink); background: #0a1120;
+      border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+    .login input:focus { outline: none; border-color: var(--accent); }
+    .login button { width: 100%; margin-top: 18px; }
+    .login .err { color: var(--bad); font-size: 13px; margin-top: 12px; min-height: 18px; }
+    .login .lock { color: var(--accent); font-size: 30px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>Feelgorithm <span class="dot">·</span> Estadísticas</h1>
+        <div class="sub">Perfilamiento de jugadores (datos anónimos)</div>
+      </div>
+      <div class="toolbar">
+        <button id="refresh" style="display:none">↻ Actualizar</button>
+        <button id="logout" style="display:none">Salir</button>
+      </div>
+    </header>
+    <div class="meta" id="meta"></div>
+    <div id="app"></div>
+    <div class="foot">Feelgorithm — panel de telemetría anónima. Acceso restringido a administradores.</div>
+  </div>
+
+  <script>
+  // ── Config pública de Firebase (el apiKey es público; la seguridad la dan las
+  //    reglas + el login de admin). Debe coincidir con src/db.js. ────────────────
+  const FIRE = { projectId: 'feelgorithm-48db6', apiKey: 'AIzaSyA5btl03yNyuSLkcXkr1B-rW1Ee-_y2fTM', collection: 'jugadores' };
+  const RT_KEY = 'feelgorithm_admin_rt'; // refreshToken de la sesión admin (clave local)
+
+  const EMO = {
+    ira:      { label: 'Ira',      color: '#e63946' },
+    miedo:    { label: 'Miedo',    color: '#7209b7' },
+    alegria:  { label: 'Alegría',  color: '#ffd166' },
+    tristeza: { label: 'Tristeza', color: '#457b9d' },
+    sorpresa: { label: 'Sorpresa', color: '#f77f00' },
+  };
+  const GEN = { masculino: 'Masculino', femenino: 'Femenino', otro: 'Otro', prefiero_no_decir: 'Prefiero no decir', '': 'Sin especificar' };
+  const ACT_ORDER = ['Me gusta', 'Comentar', 'Compartir', 'Denunciar', 'Ignorar'];
+  const ACT_COLOR = { 'Me gusta': '#ff6b9d', 'Comentar': '#5ad1ff', 'Compartir': '#ffd166', 'Denunciar': '#e63946', 'Ignorar': '#8a94b0' };
+  const ACT_AMPLIFY = new Set(['Me gusta', 'Comentar', 'Compartir']);
+  const normAct = (a) => (a === 'Like' ? 'Me gusta' : a);
+
+  const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch {} };
+  const lsDel = (k) => { try { localStorage.removeItem(k); } catch {} };
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ── Autenticación (Firebase Auth REST) ────────────────────────────────────────
+  let idToken = null, tokenExp = 0;
+
+  function authMsg(code) {
+    return ({
+      EMAIL_NOT_FOUND: 'No existe una cuenta con ese correo.',
+      INVALID_PASSWORD: 'Contraseña incorrecta.',
+      INVALID_LOGIN_CREDENTIALS: 'Correo o contraseña incorrectos.',
+      INVALID_EMAIL: 'Correo inválido.',
+      USER_DISABLED: 'Esta cuenta está deshabilitada.',
+      TOO_MANY_ATTEMPTS_TRY_LATER: 'Demasiados intentos. Intenta más tarde.',
+    })[code] || ('No se pudo iniciar sesión (' + (code || 'error') + ').');
+  }
+
+  async function signIn(email, password) {
+    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${FIRE.apiKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, returnSecureToken: true }),
+    });
+    const j = await res.json();
+    if (!res.ok) throw new Error(authMsg(j.error && j.error.message));
+    idToken = j.idToken; tokenExp = Date.now() + Number(j.expiresIn) * 1000;
+    lsSet(RT_KEY, j.refreshToken);
+  }
+
+  async function refreshIdToken() {
+    const rt = lsGet(RT_KEY);
+    if (!rt) return null;
+    const res = await fetch(`https://securetoken.googleapis.com/v1/token?key=${FIRE.apiKey}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: `grant_type=refresh_token&refresh_token=${encodeURIComponent(rt)}`,
+    });
+    if (!res.ok) { lsDel(RT_KEY); return null; }   // token revocado/expirado → re-login
+    const j = await res.json();
+    idToken = j.id_token; tokenExp = Date.now() + Number(j.expires_in) * 1000;
+    lsSet(RT_KEY, j.refresh_token);
+    return idToken;
+  }
+
+  async function getIdToken() {
+    if (idToken && tokenExp - Date.now() > 30000) return idToken;
+    return refreshIdToken();
+  }
+
+  function signOut() { idToken = null; tokenExp = 0; lsDel(RT_KEY); showLogin(); }
+
+  // ── Firestore REST (con token de admin) ───────────────────────────────────────
+  function fromValue(v) {
+    if (v == null) return null;
+    if ('stringValue' in v) return v.stringValue;
+    if ('integerValue' in v) return Number(v.integerValue);
+    if ('doubleValue' in v) return Number(v.doubleValue);
+    if ('booleanValue' in v) return v.booleanValue;
+    if ('nullValue' in v) return null;
+    if ('arrayValue' in v) return (v.arrayValue.values || []).map(fromValue);
+    if ('mapValue' in v) return fromFields(v.mapValue.fields || {});
+    if ('timestampValue' in v) return v.timestampValue;
+    return null;
+  }
+  function fromFields(fields) { const o = {}; for (const k in fields) o[k] = fromValue(fields[k]); return o; }
+
+  async function fetchAll(token) {
+    const base = `https://firestore.googleapis.com/v1/projects/${FIRE.projectId}/databases/(default)/documents/${FIRE.collection}`;
+    let next = '', out = [], pages = 0;
+    do {
+      const url = `${base}?pageSize=300${next ? `&pageToken=${encodeURIComponent(next)}` : ''}`;
+      const res = await fetch(url, { headers: { Authorization: 'Bearer ' + token } });
+      if (!res.ok) { const t = await res.text().catch(() => ''); const e = new Error('HTTP ' + res.status); e.status = res.status; e.body = t; throw e; }
+      const j = await res.json();
+      (j.documents || []).forEach((d) => out.push(fromFields(d.fields || {})));
+      next = j.nextPageToken || '';
+    } while (next && ++pages < 50);
+    return out;
+  }
+
+  // ── Utilidades de conteo/render ───────────────────────────────────────────────
+  const pct = (n, d) => d ? Math.round((n / d) * 100) : 0;
+  function tally(arr) { const m = new Map(); for (const k of arr) m.set(k, (m.get(k) || 0) + 1); return m; }
+
+  function barsHTML(entries, total) {
+    if (!entries.length) return '<div class="hint">Sin datos.</div>';
+    const max = Math.max(...entries.map((e) => e.value), 1);
+    return '<div class="bars">' + entries.map((e) => `
+      <div class="row">
+        <div class="rl" title="${esc(e.label)}">${esc(e.label)}</div>
+        <div class="track"><div class="fill" style="width:${(e.value / max) * 100}%;background:${e.color || 'var(--accent)'}"></div></div>
+        <div class="rv">${e.value} · ${pct(e.value, total)}%</div>
+      </div>`).join('') + '</div>';
+  }
+  function card(title, hint, bodyHTML, extraClass = '') {
+    return `<section class="card ${extraClass}"><h2>${title}</h2>${hint ? `<p class="hint">${hint}</p>` : ''}${bodyHTML}</section>`;
+  }
+
+  // Nombre del país en español a partir del ISO-2 (sin tablas: usa Intl).
+  let REGION = null;
+  try { REGION = new Intl.DisplayNames(['es'], { type: 'region' }); } catch {}
+  function countryName(code, name) {
+    if (name && name.length > 2) return name;                 // ya viene el nombre legible
+    if (REGION && /^[A-Z]{2}$/.test(code)) { try { return REGION.of(code) || code; } catch {} }
+    return name || code || 'Desconocido';
+  }
+  // Banderita como imagen (flagcdn, sin API key). Si falla, muestra 🌐.
+  function flagImg(code) {
+    if (!/^[A-Z]{2}$/.test(code)) return '<span class="flag-fallback">🌐</span>';
+    const c = code.toLowerCase();
+    return `<img class="flag" src="https://flagcdn.com/32x24/${c}.png" srcset="https://flagcdn.com/64x48/${c}.png 2x" alt="${code}" loading="lazy" onerror="this.outerHTML='&lt;span class=\\'flag-fallback\\'&gt;🌐&lt;/span&gt;'">`;
+  }
+  function countriesHTML(list, total) {
+    if (!list.length) return '<div class="hint">Sin datos.</div>';
+    const max = Math.max(...list.map((c) => c.n), 1);
+    return '<div class="bars">' + list.map((c) => `
+      <div class="row country">
+        <div class="rl cty">${flagImg(c.code)}<span title="${esc(countryName(c.code, c.name))}">${esc(countryName(c.code, c.name))}</span></div>
+        <div class="track"><div class="fill" style="width:${(c.n / max) * 100}%;background:var(--accent2)"></div></div>
+        <div class="rv">${c.n} · ${pct(c.n, total)}%</div>
+      </div>`).join('') + '</div>';
+  }
+
+  // ── Análisis ──────────────────────────────────────────────────────────────────
+  function analyze(players) {
+    const choices = [];
+    players.forEach((p) => (Array.isArray(p.choices) ? p.choices : []).forEach((c) => choices.push(c)));
+    const decisions = choices.filter((c) => c && c.decision).map((c) => ({ ...c, decision: normAct(c.decision) }));
+    const genM = tally(players.map((p) => (p.gender in GEN ? p.gender : (p.gender || ''))));
+    // Países agregados por código ISO-2 (con nombre para mostrar + bandera).
+    const countryAgg = new Map();
+    players.forEach((p) => {
+      const code = (p.countryCode || '').toUpperCase().trim();
+      const name = (p.country || '').trim();
+      const key = /^[A-Z]{2}$/.test(code) ? code : (name || 'Desconocido');
+      const cur = countryAgg.get(key) || { code: /^[A-Z]{2}$/.test(code) ? code : '', name, n: 0 };
+      if (!cur.name && name) cur.name = name;
+      cur.n++; countryAgg.set(key, cur);
+    });
+    const countryList = [...countryAgg.values()].sort((a, b) => b.n - a.n);
+    const emoM = tally(choices.map((c) => c && c.emotionId).filter(Boolean));
+    const actM = tally(decisions.map((c) => c.decision));
+    const cross = {}; Object.keys(EMO).forEach((e) => { cross[e] = {}; ACT_ORDER.forEach((a) => cross[e][a] = 0); });
+    decisions.forEach((c) => { if (cross[c.emotionId] && c.decision in cross[c.emotionId]) cross[c.emotionId][c.decision]++; });
+    const byContent = {};
+    choices.forEach((c) => {
+      if (!c || !c.contentId) return;
+      const b = byContent[c.contentId] || (byContent[c.contentId] = { emo: {}, act: {}, n: 0 });
+      b.n++; if (c.emotionId) b.emo[c.emotionId] = (b.emo[c.emotionId] || 0) + 1;
+      const a = normAct(c.decision); if (a) b.act[a] = (b.act[a] || 0) + 1;
+    });
+    const genEmo = {};
+    players.forEach((p) => {
+      const g = p.gender in GEN ? p.gender : (p.gender || '');
+      (Array.isArray(p.choices) ? p.choices : []).forEach((c) => {
+        if (!c || !c.emotionId) return;
+        (genEmo[g] || (genEmo[g] = {}))[c.emotionId] = (genEmo[g][c.emotionId] || 0) + 1;
+      });
+    });
+    const completed = players.filter((p) => (Array.isArray(p.choices) ? p.choices.filter((c) => c && c.decision).length : 0) >= 4).length;
+    const amplify = decisions.filter((c) => ACT_AMPLIFY.has(c.decision)).length;
+    const critical = decisions.length - amplify;
+    const dayM = new Map();
+    players.forEach((p) => {
+      const t = Number(p.createdAt); if (!t) return;
+      const d = new Date(t); const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      dayM.set(key, (dayM.get(key) || 0) + 1);
+    });
+    return { players, choices, decisions, genM, countryList, emoM, actM, cross, byContent, genEmo, completed, amplify, critical, dayM };
+  }
+  const sortedEntries = (map, mapper) => [...map.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => mapper(k, v));
+
+  function render(a) {
+    const P = a.players.length, D = a.decisions.length;
+    const avgDec = P ? (a.decisions.length / P) : 0;
+    const kpis = [
+      { n: P, l: 'Jugadores' }, { n: a.choices.length, l: 'Emociones registradas' },
+      { n: D, l: 'Decisiones tomadas' }, { n: a.countryList.length, l: 'Países' },
+      { n: pct(a.completed, P) + '%', l: 'Terminaron las 4 noticias' }, { n: pct(a.critical, D) + '%', l: 'Reacción crítica' },
+    ];
+    const kpiHTML = '<div class="kpis">' + kpis.map((k) => `<div class="kpi"><div class="n">${k.n}</div><div class="l">${k.l}</div></div>`).join('') + '</div>';
+
+    const genEntries = sortedEntries(a.genM, (k, v) => ({ label: GEN[k] || k || 'Sin especificar', value: v, color: 'var(--accent)' }));
+    const emoEntries = sortedEntries(a.emoM, (k, v) => ({ label: (EMO[k] || {}).label || k, value: v, color: (EMO[k] || {}).color || 'var(--accent)' }));
+    const actEntries = ACT_ORDER.filter((x) => a.actM.get(x)).map((x) => ({ label: x, value: a.actM.get(x) || 0, color: ACT_COLOR[x] }));
+
+    let matrix = '<div class="scroll"><table class="matrix"><tr><th>Emoción \\ Acción</th>' +
+      ACT_ORDER.map((x) => `<th>${x}</th>`).join('') + '<th>Total</th></tr>';
+    let cmax = 1;
+    Object.keys(EMO).forEach((e) => ACT_ORDER.forEach((x) => { cmax = Math.max(cmax, a.cross[e][x]); }));
+    Object.keys(EMO).forEach((e) => {
+      const rowTot = ACT_ORDER.reduce((s, x) => s + a.cross[e][x], 0);
+      matrix += `<tr><td class="lab" style="border-left:3px solid ${EMO[e].color}">${EMO[e].label}</td>` +
+        ACT_ORDER.map((x) => {
+          const v = a.cross[e][x];
+          const bg = v ? `background:rgba(90,209,255,${0.08 + 0.5 * (v / cmax)})` : '';
+          return `<td style="${bg}">${v || '·'}${v ? `<span class="pct">${pct(v, rowTot)}%</span>` : ''}</td>`;
+        }).join('') + `<td>${rowTot}</td></tr>`;
+    });
+    matrix += '</table></div><p class="legendnote">Cada fila muestra qué hace la gente cuando siente esa emoción. El % es dentro de la emoción.</p>';
+
+    const topKey = (obj, dict) => { const e = Object.entries(obj).sort((x, y) => y[1] - x[1])[0]; return e ? `${(dict[e[0]] || {}).label || e[0]} (${e[1]})` : '—'; };
+    const contentIds = Object.keys(a.byContent).sort();
+    let contentHTML = '<div class="scroll"><table class="matrix"><tr><th>Noticia</th><th>Vistas</th><th>Emoción dominante</th><th>Acción dominante</th></tr>' +
+      (contentIds.length ? contentIds.map((id) => {
+        const b = a.byContent[id];
+        const topAct = Object.entries(b.act).sort((x, y) => y[1] - x[1])[0];
+        return `<tr><td class="lab">${esc(id)}</td><td>${b.n}</td><td>${topKey(b.emo, EMO)}</td><td>${topAct ? `${esc(topAct[0])} (${topAct[1]})` : '—'}</td></tr>`;
+      }).join('') : '<tr><td colspan="4" class="hint">Sin datos.</td></tr>') + '</table></div>';
+
+    let genEmoHTML = '<div class="scroll"><table class="matrix"><tr><th>Género</th><th>Emoción dominante</th><th>Elecciones</th></tr>' +
+      (Object.keys(a.genEmo).length ? Object.entries(a.genEmo).sort((x, y) => {
+        const sx = Object.values(x[1]).reduce((s, n) => s + n, 0), sy = Object.values(y[1]).reduce((s, n) => s + n, 0); return sy - sx;
+      }).map(([g, obj]) => `<tr><td class="lab">${GEN[g] || g || 'Sin especificar'}</td><td>${topKey(obj, EMO)}</td><td>${Object.values(obj).reduce((s, n) => s + n, 0)}</td></tr>`).join('') : '<tr><td colspan="3" class="hint">Sin datos.</td></tr>') + '</table></div>';
+
+    const days = [...a.dayM.entries()].sort((x, y) => x[0].localeCompare(y[0]));
+    const dmax = Math.max(1, ...days.map((d) => d[1]));
+    const spark = days.length
+      ? `<div class="spark">${days.map((d) => `<div class="b" style="height:${(d[1] / dmax) * 100}%" title="${d[0]}: ${d[1]}"></div>`).join('')}</div>
+         <div class="spark-x"><span>${days[0][0]}</span><span>${days[days.length - 1][0]}</span></div>`
+      : '<div class="hint">Sin datos de fecha.</div>';
+
+    $('app').innerHTML = kpiHTML + '<div class="grid">' +
+      card('Emoción × Acción — perfilamiento', 'La reacción según lo que sintieron.', matrix, 'full') +
+      card('Emociones sentidas', 'Qué emoción eligen ante el contenido.', barsHTML(emoEntries, a.choices.length)) +
+      card('Acciones tomadas', 'Qué hacen con el contenido.', barsHTML(actEntries, a.decisions.length)) +
+      card('Género', '', barsHTML(genEntries, P)) +
+      card('Emoción dominante por género', 'Perfilamiento demográfico.', genEmoHTML) +
+      card(`Países que han jugado (${a.countryList.length})`, 'Detectado por geolocalización de IP al jugar.', countriesHTML(a.countryList, P), 'full') +
+      card('Resumen por noticia', 'Emoción y acción más frecuentes por contenido.', contentHTML, 'full') +
+      card('Nuevos jugadores por día', `Promedio de ${avgDec.toFixed(1)} decisiones por jugador.`, spark, 'full') +
+      '</div>';
+  }
+
+  // ── Vistas ────────────────────────────────────────────────────────────────────
+  function setLoggedInUI(v) {
+    $('refresh').style.display = v ? '' : 'none';
+    $('logout').style.display = v ? '' : 'none';
+  }
+
+  function showLogin(msg) {
+    setLoggedInUI(false);
+    $('meta').textContent = '';
+    $('app').innerHTML = `
+      <form class="login" id="loginForm" autocomplete="on">
+        <div class="lock">🔒</div>
+        <h2>Acceso de administrador</h2>
+        <p>Este panel es privado. Inicia sesión con tu cuenta de administrador.</p>
+        <label for="email">Correo</label>
+        <input id="email" type="email" required autocomplete="username" />
+        <label for="password">Contraseña</label>
+        <input id="password" type="password" required autocomplete="current-password" />
+        <button class="primary" id="loginBtn" type="submit">Entrar</button>
+        <div class="err" id="loginErr">${msg ? esc(msg) : ''}</div>
+      </form>`;
+    $('loginForm').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const btn = $('loginBtn'); btn.disabled = true; $('loginErr').textContent = '';
+      try {
+        await signIn($('email').value.trim(), $('password').value);
+        load();
+      } catch (err) {
+        $('loginErr').textContent = err.message;
+        btn.disabled = false;
+      }
+    });
+  }
+
+  function showBlocked(err) {
+    setLoggedInUI(true);
+    const isPerm = err.status === 403;
+    $('app').innerHTML = `
+      <div class="card panel-warn state" style="text-align:left">
+        <h2>${isPerm ? 'Esta cuenta no tiene permiso de lectura' : 'No se pudieron cargar los datos'}</h2>
+        ${isPerm ? `
+        <p>Iniciaste sesión, pero las reglas de Firestore no permiten que esta cuenta lea la colección. Asegúrate de que en Firebase → Firestore → <b>Reglas</b> esté publicado esto (reemplaza el correo por el de tu cuenta admin):</p>
+        <pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /jugadores/{playerId} {
+      // Solo tu cuenta admin puede leer:
+      allow read: if request.auth != null
+                  &amp;&amp; request.auth.token.email == 'TU-CORREO@ejemplo.com';
+      // El juego escribe sin login (telemetría anónima), con forma controlada:
+      allow create, update: if
+        request.resource.data.playerId is string
+        &amp;&amp; request.resource.data.keys().hasOnly(
+             ['playerId','gender','country','countryCode','createdAt','updatedAt','choices']);
+      allow delete: if false;
+    }
+  }
+}</pre>
+        <p class="legendnote">Publica las reglas y pulsa «Actualizar». Si sigue fallando, revisa que el correo del login sea exactamente el de la regla.</p>
+        ` : `<p>Detalle: ${esc(err.message)}. Revisa la conexión y pulsa «Actualizar».</p>`}
+      </div>`;
+  }
+
+  async function load() {
+    const token = await getIdToken();
+    if (!token) { showLogin(); return; }
+    setLoggedInUI(true);
+    $('meta').textContent = 'Cargando datos…';
+    $('app').innerHTML = '<div class="state">Cargando…</div>';
+    try {
+      const players = await fetchAll(token);
+      if (!players.length) {
+        $('app').innerHTML = '<div class="state"><h2>Aún no hay jugadores registrados</h2><p>Cuando alguien juegue, sus datos aparecerán aquí.</p></div>';
+        $('meta').textContent = '0 registros';
+        return;
+      }
+      render(analyze(players));
+      $('meta').textContent = `${players.length} jugadores · actualizado ${new Date().toLocaleString('es')}`;
+    } catch (err) {
+      console.error(err);
+      if (err.status === 401) { signOut(); return; }  // token inválido → re-login
+      showBlocked(err);
+      $('meta').textContent = 'Error al cargar';
+    }
+  }
+
+  $('refresh').addEventListener('click', load);
+  $('logout').addEventListener('click', signOut);
+  load();
+  </script>
+</body>
+</html>
