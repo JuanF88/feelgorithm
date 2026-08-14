@@ -7,9 +7,11 @@ import { MATRIZ_EN } from './data/matriz.en.js';
 const LANG_KEY = 'feelgorithm_lang';
 
 let lang = readLang();
+// Por defecto el juego arranca en INGLÉS; solo usa español si el usuario lo eligió
+// explícitamente antes (queda guardado en localStorage).
 function readLang() {
-  try { return localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'es'; }
-  catch { return 'es'; }
+  try { return localStorage.getItem(LANG_KEY) === 'es' ? 'es' : 'en'; }
+  catch { return 'en'; }
 }
 
 export function getLang() { return lang; }

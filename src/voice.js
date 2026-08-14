@@ -2,6 +2,11 @@
 // nativa del navegador (speechSynthesis): gratis, sin dependencias y con
 // entonación ajustable (rate/pitch/volume/voz) desde src/config.js → VOICE.
 import { VOICE } from './config.js';
+import { getLang } from './i18n.js';
+
+// La voz sigue el idioma de la interfaz: inglés (en-US) si el juego está en inglés,
+// si no el idioma configurado en VOICE.lang (por defecto es-ES).
+const voiceLang = () => (getLang() === 'en' ? 'en-US' : (VOICE.lang || 'es-ES'));
 
 const synth = (typeof window !== 'undefined' && window.speechSynthesis) || null;
 let voices = [];
@@ -24,7 +29,7 @@ function pickVoice() {
     const named = voices.find((v) => v.name === VOICE.voiceName);
     if (named) return named;
   }
-  const pref = (VOICE.lang || 'es').slice(0, 2).toLowerCase();
+  const pref = voiceLang().slice(0, 2).toLowerCase();
   const es = voices.filter((v) => v.lang && v.lang.toLowerCase().startsWith(pref));
   if (!es.length) return null;
   const score = (v) => {
@@ -34,7 +39,7 @@ function pickVoice() {
     if (n.includes('natural') || n.includes('neural')) s += 6; // Edge/Windows neurales
     if (n.includes('microsoft')) s += 3;
     if (v.localService === false) s += 2;            // online > local (más natural)
-    if ((v.lang || '').toLowerCase() === (VOICE.lang || '').toLowerCase()) s += 1;
+    if ((v.lang || '').toLowerCase() === voiceLang().toLowerCase()) s += 1;
     return s;
   };
   return es.slice().sort((a, b) => score(b) - score(a))[0];
@@ -46,7 +51,7 @@ export function speak(text) {
   try {
     synth.cancel();
     const u = new SpeechSynthesisUtterance(text);
-    u.lang = VOICE.lang;
+    u.lang = voiceLang();
     u.rate = VOICE.rate;
     u.pitch = VOICE.pitch;
     u.volume = VOICE.volume;
