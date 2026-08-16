@@ -1,10 +1,10 @@
-import { GAME, CHAR, BG2, CORRIDOR, VILLAIN, VILLAIN_SKINS, ROCKS, PROJECTILE, THOUGHTS, CONTENT, EMO_MATRIX, TUNNEL_EMO, TUNNEL_MSG, PROMPT, TEXT } from '../config.js';
+import { GAME, CHAR, BG2, CORRIDOR, VILLAIN, VILLAIN_SKINS, ROCKS, PROJECTILE, THOUGHTS, CONTENT, EMO_MATRIX, TUNNEL_EMO, TUNNEL_MSG, PROMPT, TEXT, UI } from '../config.js';
 import { mkText, buildTopBar, fitTextInBox, openSettings } from '../ui/hud.js';
 import TouchControls, { hasTouch } from '../ui/touch.js';
 import { footsteps, playSfx } from '../audio.js';
 import { speak, stopSpeak } from '../voice.js';
 import { addAmbientParticles } from '../ui/particles.js';
-import { t, getMatriz } from '../i18n.js';
+import { t, getMatriz, getLang } from '../i18n.js';
 
 // Escena 2 — el pasillo, nivel de RESISTIR. El personaje sale del túnel izquierdo;
 // al fondo un villano lanza rocas en parábola. Hay que esquivarlas durante un tiempo
@@ -81,7 +81,11 @@ export default class CorridorScene extends Phaser.Scene {
     this.tunnelReady = false;
     this.tunnelMode = false; // true = mensajes-imagen sobre el villano; false = texto sobre el personaje
     const folderEmo = TUNNEL_EMO[this.emotion?.id];
-    const imgSet = (TUNNEL_MSG[caso] && folderEmo) ? TUNNEL_MSG[caso][folderEmo] : null;
+    let imgSet = (TUNNEL_MSG[caso] && folderEmo) ? TUNNEL_MSG[caso][folderEmo] : null;
+    // En inglés se usan las versiones traducidas (mismo diseño) de la carpeta en/.
+    if (imgSet && getLang() === 'en') {
+      imgSet = imgSet.map((p) => p.replace('assets/scrolling tunel/', 'assets/scrolling tunel/en/'));
+    }
     if (imgSet && imgSet.length) { this.tunnelMode = true; this.loadTunnelMsgs(caso, folderEmo, imgSet); }
 
     this.buildPrompt();
@@ -199,6 +203,7 @@ export default class CorridorScene extends Phaser.Scene {
     this.hideTimer();
     this.setPrompt(t('El villano se fue. ¡Corre a la puerta! →'));
     this.time.delayedCall(2600, () => this.hidePrompt());
+    this.showExitArrow();
     this.villain.play(`${this.villainKey}-idle`);
     this.tweens.add({
       targets: this.villain,
@@ -210,12 +215,35 @@ export default class CorridorScene extends Phaser.Scene {
     });
   }
 
+  // Flecha a la DERECHA (mismo botón del final del juego, volteado) que indica
+  // avanzar hacia la salida cuando el villano ya se fue. Rebota para llamar la
+  // atención y desaparece al llegar a la puerta.
+  showExitArrow() {
+    if (this.exitArrow) return;
+    const size = UI.reset.size * 1.15;
+    const x = GAME.width * 0.9;
+    const y = this.floorY - 150;
+    const arrow = this.add.image(x, y, UI.reset.key).setFlipX(true).setDepth(50).setDisplaySize(size, size);
+    arrow.baseX = x;
+    this.tweens.add({ targets: arrow, x: x + 40, duration: 560, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.tweens.add({ targets: arrow, alpha: { from: 0.7, to: 1 }, duration: 560, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+    this.exitArrow = arrow;
+  }
+
+  hideExitArrow() {
+    if (!this.exitArrow) return;
+    const a = this.exitArrow; this.exitArrow = null;
+    this.tweens.killTweensOf(a);
+    this.tweens.add({ targets: a, alpha: 0, duration: 250, onComplete: () => a.destroy() });
+  }
+
   // ─────────────────────────────── pensamientos / mensajes ───────────────────────────────
 
   // Carga bajo demanda los 3 diseños del (caso × emoción). Son PNG pesados
   // (2000x2000), por eso no se precargan en Boot ni en el service worker.
   loadTunnelMsgs(caso, folderEmo, paths) {
-    const keys = paths.map((_, i) => `tun:${caso}:${folderEmo}:${i}`);
+    // La clave incluye el idioma para no mezclar en caché el arte ES y EN.
+    const keys = paths.map((_, i) => `tun:${getLang()}:${caso}:${folderEmo}:${i}`);
     if (keys.every((k) => this.textures.exists(k))) { this.tunnelKeys = keys; this.tunnelReady = true; return; }
     paths.forEach((p, i) => { if (!this.textures.exists(keys[i])) this.load.image(keys[i], p); });
     this.load.once('complete', () => {
@@ -535,6 +563,7 @@ export default class CorridorScene extends Phaser.Scene {
     this.stopThrowing();
     this.clearRocks();
     this.stopThoughts();
+    this.hideExitArrow();
     this.avatar.setFlipX(false);
     this.hidePrompt();
     this.tweens.add({

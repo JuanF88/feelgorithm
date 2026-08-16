@@ -416,8 +416,122 @@ export default class RoomScene extends Phaser.Scene {
     playSfx(this, 'lever');
     this.lever.once('animationcomplete-lever-pull', () => {
       this.tweens.add({ targets: this.lever, alpha: 0, duration: 300 }); // la palanca desaparece
-      this.descendScreen();
+      // Efecto ruleta: el "algoritmo" gira entre los contenidos posibles y aterriza
+      // en uno al azar (sin repetir los ya vistos en la sesión). Luego baja la pantalla.
+      this.spinRoulette((idx) => { this.contentIndex = idx; this.descendScreen(); });
     });
+  }
+
+  // ─────────────────────────────── ruleta de contenido ───────────────────────────────
+
+  // Elige un contenido al azar entre los que NO han salido aún en la sesión (para
+  // no repetir) y lo revela con una ruleta neón acorde al estilo del juego.
+  spinRoulette(onDone) {
+    const seen = new Set(this.session.map((e) => e.contentId));
+    let candidates = CONTENT.map((_, i) => i).filter((i) => !seen.has(CONTENT[i].id));
+    if (!candidates.length) candidates = CONTENT.map((_, i) => i);
+    const chosen = Phaser.Utils.Array.GetRandom(candidates);
+
+    const { width, height } = GAME;
+    const cx = width / 2;
+    const cy = height * 0.44;
+    const cardW = 340;
+    const cardH = 300;
+    const pitch = cardW + 46;
+
+    // Oscurece la sala para enfocar la ruleta (se mantiene hasta que baja la pantalla).
+    this.dimOverlay.setInteractive();
+    this.tweens.add({ targets: this.dimOverlay, alpha: 0.82, duration: 400 });
+
+    // Cabecera temática.
+    const header = this.mkText(cx, cy - cardH / 2 - 74, t('El algoritmo elige por ti…'), 40, {
+      color: UI_ACCENT_HEX, fontStyle: 'bold', align: 'center',
+    }).setOrigin(0.5).setDepth(311);
+    const headerTween = this.tweens.add({ targets: header, alpha: { from: 0.55, to: 1 }, duration: 620, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+
+    // Cinta (reel): repite las 4 casillas varias veces para dar recorrido.
+    const LOOPS = 7;
+    const strip = [];
+    for (let l = 0; l < LOOPS; l++) CONTENT.forEach((it, i) => strip.push({ it, i }));
+    const startK = 2;
+    const targetK = 5 * CONTENT.length + chosen; // aterriza cerca del final
+    const reel = this.add.container(cx - startK * pitch, cy).setDepth(305);
+    strip.forEach((s, k) => reel.add(this.makeRouletteCard(s.it, s.i, k * pitch, cardW, cardH)));
+
+    // Máscara: solo se ven ~3 casillas (recorta el resto de la cinta).
+    const maskW = pitch * 3 + 40;
+    const maskG = this.add.graphics().setVisible(false);
+    maskG.fillStyle(0xffffff).fillRect(cx - maskW / 2, cy - cardH / 2 - 24, maskW, cardH + 48);
+    reel.setMask(maskG.createGeometryMask());
+
+    // Selector central (marco neón que resalta la casilla bajo el puntero).
+    const sel = this.add.graphics().setDepth(308);
+    const drawSel = (a) => {
+      sel.clear();
+      for (let i = 3; i >= 1; i--) { sel.lineStyle(6 + i * 6, 0x5ad1ff, (0.10 * a) / i); sel.strokeRoundedRect(cx - cardW / 2 - 12, cy - cardH / 2 - 12, cardW + 24, cardH + 24, 26); }
+      sel.lineStyle(6, 0x9be9ff, a); sel.strokeRoundedRect(cx - cardW / 2 - 12, cy - cardH / 2 - 12, cardW + 24, cardH + 24, 26);
+      sel.fillStyle(0x9be9ff, a); // marcadores ▼ ▲
+      sel.fillTriangle(cx - 22, cy - cardH / 2 - 30, cx + 22, cy - cardH / 2 - 30, cx, cy - cardH / 2 - 4);
+      sel.fillTriangle(cx - 22, cy + cardH / 2 + 30, cx + 22, cy + cardH / 2 + 30, cx, cy + cardH / 2 + 4);
+    };
+    drawSel(1);
+    const selTween = this.tweens.add({ targets: { a: 1 }, a: 0.5, duration: 520, yoyo: true, repeat: -1, ease: 'Sine.easeInOut', onUpdate: (tw, o) => drawSel(o.a) });
+
+    // Giro: desacelera hasta centrar la casilla objetivo; ticks al cruzar cada una.
+    let lastTick = null;
+    this.tweens.add({
+      targets: reel,
+      x: cx - targetK * pitch,
+      duration: 2600,
+      ease: 'Cubic.easeOut',
+      onUpdate: () => {
+        const nearest = Math.round((cx - reel.x) / pitch);
+        if (nearest !== lastTick) { lastTick = nearest; playSfx(this, 'ui'); }
+      },
+      onComplete: () => {
+        const card = reel.list[targetK];
+        playSfx(this, 'select');
+        this.time.delayedCall(120, () => playSfx(this, 'emerge'));
+        if (card) this.tweens.add({ targets: card, scale: 1.12, duration: 220, yoyo: true, ease: 'Sine.easeOut' });
+        this.time.delayedCall(820, () => {
+          selTween.stop(); headerTween.stop();
+          this.tweens.add({
+            targets: [reel, sel, header], alpha: 0, duration: 320,
+            onComplete: () => { reel.destroy(); sel.destroy(); header.destroy(); maskG.destroy(); onDone(chosen); },
+          });
+        });
+      },
+    });
+  }
+
+  // Una casilla de la ruleta: panel neón con ícono de tipo, título y color por contenido.
+  makeRouletteCard(item, idx, x, cardW, cardH) {
+    const ICON = { c1: '💬', c2: '🎬', c3: '📰', c4: '🎙️' };
+    const HUE = { c1: 0x5ad1ff, c2: 0xff5ccd, c3: 0xf4d35e, c4: 0x7cfc9b };
+    const hue = HUE[item.id] ?? 0x5ad1ff;
+    const hueHex = `#${hue.toString(16).padStart(6, '0')}`;
+    const c = this.add.container(x, 0);
+
+    const g = this.add.graphics();
+    g.fillStyle(0x0c0a16, 0.94).fillRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 22);
+    g.lineStyle(4, hue, 0.9).strokeRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 22);
+    g.lineStyle(2, hue, 0.28).strokeRoundedRect(-cardW / 2 + 10, -cardH / 2 + 10, cardW - 20, cardH - 20, 16);
+
+    const icon = this.mkText(0, -68, ICON[item.id] ?? '📡', 96, {}).setOrigin(0.5);
+    const badge = this.mkText(-cardW / 2 + 22, -cardH / 2 + 20, `${idx + 1}/${CONTENT.length}`, 22, {
+      color: hueHex, fontStyle: 'bold',
+    }).setOrigin(0, 0);
+    const title = this.mkText(0, 66, contentTitle(item) || item.id, 26, {
+      color: '#e9edf5', fontStyle: 'bold', align: 'center', wordWrap: { width: cardW - 54 },
+    }).setOrigin(0.5, 0);
+    // Salvaguarda: si el título aún fuera muy alto, baja la fuente para que no se
+    // salga del recuadro (el ancho ya lo controla wordWrap).
+    const maxTitleH = cardH / 2 - 66 - 12;
+    let fs = 26;
+    while (title.height > maxTitleH && fs > 16) { fs -= 2; title.setFontSize(fs); }
+
+    c.add([g, icon, badge, title]);
+    return c;
   }
 
   // La pantalla baja YA con la noticia puesta (se ve mientras desciende).
@@ -653,7 +767,7 @@ export default class RoomScene extends Phaser.Scene {
     this.tweens.add({ targets: node, scale: 1.2, duration: 250, yoyo: true });
 
     this.avatar.setTint(emo.color);
-    this.showPrompt(`Sentiste: ${emo.label}`);
+    this.showPrompt(`${t('Sentiste:')} ${emoLabel(emo)}`);
 
     this.time.delayedCall(1100, () => this.startAutoWalk());
   }

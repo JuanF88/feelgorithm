@@ -170,7 +170,7 @@ export const CONTENT = [
     file: "assets/contenido/Contenido 4_ Español_Nota de Voz.mp4",
     key_en: "cont_c4_en",
     file_en: "assets/contenido/english/Contenido 4_ English_Nota de voz.mp4",
-    titulo: "Contenido 4 — Salud y acceso a citas médicas (nota de voz)",
+    titulo: "Contenido 4 — Citas médicas",
     caso: "4.0",
     screen: "v", // nota de voz / reel vertical
   },

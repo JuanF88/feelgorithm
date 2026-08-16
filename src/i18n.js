@@ -134,8 +134,11 @@ const EN = {
   'Contenido 1_Español_Cádena de WhatsAPP': 'Item 1 — WhatsApp chain (simulated)',
   'Contenido 2 — Reel de roles de género': 'Item 2 — Gender-roles reel',
   'Contenido 3 — Seguridad ciudadana (titular)': 'Item 3 — Public safety (headline)',
-  'Contenido 4 — Salud y acceso a citas médicas (nota de voz)': 'Item 4 — Health & timely medical appointments (voice note)',
+  'Contenido 4 — Citas médicas': 'Item 4 — Medical appointments',
 
   // Botón de idioma
   'Idioma': 'Language',
+
+  // Ruleta de contenido (al accionar la palanca)
+  'El algoritmo elige por ti…': 'The algorithm is choosing for you…',
 };
