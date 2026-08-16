@@ -1,6 +1,6 @@
 // Service worker básico: cachea el shell para que el juego funcione offline.
 // Sube el número de versión cuando cambies archivos para forzar la actualización.
-const CACHE = "feelgorithm-v67";
+const CACHE = "feelgorithm-v68";
 const ASSETS = [
   ".",
   "index.html",
@@ -24,7 +24,12 @@ const ASSETS = [
   "src/audio.js",
   "src/voice.js",
   "src/data/matriz.js",
+  "favicon.ico",
   "assets/icons/icon.svg",
+  "assets/icons/favicon-32.png",
+  "assets/icons/icon-192.png",
+  "assets/icons/icon-512.png",
+  "assets/icons/apple-touch-icon.png",
   "assets/characters/character2Sheet.png",
   "assets/characters/villainSheet.png",
   "assets/characters/villainAtackSheet.png",
